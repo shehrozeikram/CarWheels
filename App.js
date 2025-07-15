@@ -17,6 +17,10 @@ import ProfileScreen from './app/screens/ProfileScreen';
 import AdsScreen from './app/screens/AdsScreen';
 import ChatScreen from './app/screens/ChatScreen';
 import CarComparisonScreen from './app/screens/CarComparisonScreen';
+import ChoosePlanScreen from './app/screens/selling/car/ChoosePlanScreen';
+import SellYourCarScreen from './app/screens/selling/car/SellYourCarScreen';
+import BikeChoosePlanScreen from './app/screens/selling/bike/ChoosePlanScreen';
+import AutoPartsChoosePlanScreen from './app/screens/selling/autoparts/ChoosePlanScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Stack = createStackNavigator();
@@ -38,6 +42,10 @@ export default function App() {
           <Stack.Screen name="AdsScreen" component={AdsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CarComparisonScreen" component={CarComparisonScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ChoosePlanScreen" component={ChoosePlanScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SellYourCarScreen" component={SellYourCarScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="BikeChoosePlanScreen" component={BikeChoosePlanScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AutoPartsChoosePlanScreen" component={AutoPartsChoosePlanScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

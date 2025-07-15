@@ -111,6 +111,7 @@ const AdsScreen = ({ navigation }) => {
         visible={sellModalVisible}
         onClose={() => setSellModalVisible(false)}
         onSelectOption={handleSellOption}
+        navigation={navigation}
       />
     </SafeAreaView>
   );

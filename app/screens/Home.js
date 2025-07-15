@@ -577,10 +577,22 @@ const AutostoreSection = () => (
 );
 
 // Accept navigation prop
-const Home = ({ navigation }) => {
+const Home = ({ navigation, route }) => {
   // Add state for selected tab
   const [selectedTab, setSelectedTab] = useState('Used Cars');
   const [sellModalVisible, setSellModalVisible] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [newListing, setNewListing] = useState(null);
+
+  // Handle new listing from SellYourCarScreen
+  React.useEffect(() => {
+    if (route.params?.newListing) {
+      setNewListing(route.params.newListing);
+      setShowSuccessMessage(true);
+      // Clear the params to prevent showing message again
+      navigation.setParams({ newListing: undefined, showSuccessMessage: undefined });
+    }
+  }, [route.params?.newListing]);
 
   const handleSellOption = (option) => {
     setSellModalVisible(false);
@@ -657,6 +669,37 @@ const Home = ({ navigation }) => {
         {/* Dynamic Content */}
         {selectedTab === 'Used Cars' ? (
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+            {/* Success Message */}
+            {showSuccessMessage && newListing && (
+              <View style={styles.successMessageContainer}>
+                <View style={styles.successMessage}>
+                  <Text style={styles.successIcon}>✅</Text>
+                  <Text style={styles.successText}>Your car ad has been posted successfully!</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Your Newly Posted Ad */}
+            {newListing && (
+              <View style={[styles.sectionWithCards, styles.sectionSpacing]}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>Your Newly Posted Ad</Text>
+                  <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.cardRow}>
+                    <TouchableOpacity style={styles.carCard} onPress={() => navigation.navigate('CarDetailScreen', { carId: newListing.id })}>
+                      <Image source={newListing.image} style={styles.carImage} resizeMode="contain" />
+                      <Text style={styles.carCardTitle}>{newListing.title}</Text>
+                      <Text style={styles.carCardPrice}>{newListing.price}</Text>
+                      <Text style={styles.carCardCity}>{newListing.city}</Text>
+                      <Text style={styles.carCardDetails}>{newListing.year} | {newListing.km} | {newListing.fuel}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+
             {/* Browse Used Cars */}
             <View style={[styles.section, styles.sectionSpacingSmall]}>
               <Text style={styles.sectionTitle}>Browse Used Cars</Text>
@@ -900,12 +943,26 @@ const Home = ({ navigation }) => {
         </View>
       </View>
       
-      {/* Sell Modal */}
-      <SellModal
-        visible={sellModalVisible}
-        onClose={() => setSellModalVisible(false)}
-        onSelectOption={handleSellOption}
-      />
+              {/* Success Message */}
+        {showSuccessMessage && (
+          <View style={styles.successMessage}>
+            <Text style={styles.successMessageText}>✅ Your car ad has been posted successfully!</Text>
+            <TouchableOpacity 
+              style={styles.successMessageClose}
+              onPress={() => setShowSuccessMessage(false)}
+            >
+              <Text style={styles.successMessageCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Sell Modal */}
+        <SellModal
+          visible={sellModalVisible}
+          onClose={() => setSellModalVisible(false)}
+          onSelectOption={handleSellOption}
+          navigation={navigation}
+        />
     </SafeAreaView>
   );
 };
@@ -1238,6 +1295,47 @@ const styles = StyleSheet.create({
   fuelPoweredLogo: {
     fontSize: 22,
     color: '#e11d48',
+  },
+  successMessageContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  successMessage: {
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  successIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  successText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  successMessageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  successMessageClose: {
+    padding: 4,
+  },
+  successMessageCloseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

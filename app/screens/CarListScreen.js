@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Platform, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import SellModal from '../modals/SellModal';
 
 const carData = {
   'Daihatsu Mira': [
@@ -953,6 +954,27 @@ const CarListScreen = ({ navigation, route }) => {
   // Sticky bar state
   const [showStickyBar, setShowStickyBar] = useState(false);
   const scrollY = useRef(0);
+  
+  // Sell modal state
+  const [sellModalVisible, setSellModalVisible] = useState(false);
+
+  const handleSellOption = (option) => {
+    setSellModalVisible(false);
+    // Handle different sell options here
+    console.log('Selected sell option:', option);
+    // You can navigate to different screens based on the option
+    switch (option) {
+      case 'car':
+        // Navigate to car selling screen
+        break;
+      case 'bike':
+        // Navigate to bike selling screen
+        break;
+      case 'autoparts':
+        // Navigate to auto parts selling screen
+        break;
+    }
+  };
 
   // Handler for scroll event
   const handleScroll = (event) => {
@@ -1171,9 +1193,20 @@ const CarListScreen = ({ navigation, route }) => {
         ))}
       </ScrollView>
       {/* Floating SELL Button */}
-      <TouchableOpacity style={styles.sellButton}>
+      <TouchableOpacity 
+        style={styles.sellButton}
+        onPress={() => setSellModalVisible(true)}
+      >
         <Text style={styles.sellButtonText}>SELL</Text>
       </TouchableOpacity>
+      
+      {/* Sell Modal */}
+      <SellModal
+        visible={sellModalVisible}
+        onClose={() => setSellModalVisible(false)}
+        onSelectOption={handleSellOption}
+        navigation={navigation}
+      />
     </Root>
   );
 };

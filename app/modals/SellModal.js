@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, Platform } from 'react-native';
 
-const SellModal = ({ visible, onClose, onSelectOption }) => {
+const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
   const sellOptions = [
     { id: 'car', label: 'Car', icon: '🚗' },
     { id: 'bike', label: 'Bike', icon: '🏍️' },
@@ -28,11 +28,30 @@ const SellModal = ({ visible, onClose, onSelectOption }) => {
           {/* Options */}
           <View style={styles.optionsContainer}>
             {sellOptions.map((option) => (
-              <TouchableOpacity
-                key={option.id}
-                style={styles.optionButton}
-                onPress={() => onSelectOption(option.id)}
-              >
+                              <TouchableOpacity
+                  key={option.id}
+                  style={styles.optionButton}
+                  onPress={() => {
+                    onClose();
+                    if (navigation) {
+                      switch (option.id) {
+                        case 'car':
+                          navigation.navigate('ChoosePlanScreen');
+                          break;
+                        case 'bike':
+                          navigation.navigate('BikeChoosePlanScreen');
+                          break;
+                        case 'autoparts':
+                          navigation.navigate('AutoPartsChoosePlanScreen');
+                          break;
+                        default:
+                          onSelectOption(option.id);
+                      }
+                    } else {
+                      onSelectOption(option.id);
+                    }
+                  }}
+                >
                 <View style={styles.iconContainer}>
                   <Text style={styles.icon}>{option.icon}</Text>
                 </View>

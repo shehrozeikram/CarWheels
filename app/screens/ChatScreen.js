@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Platform } from 'react-native';
 import SellModal from '../modals/SellModal';
+import AuthModal from '../modals/AuthModal';
+import { isUserLoggedIn } from './auth/AuthUtils';
 
 const ChatScreen = ({ navigation }) => {
   const [sellModalVisible, setSellModalVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   const handleSellOption = (option) => {
     setSellModalVisible(false);
     console.log('Selected sell option:', option);
     // Handle different sell options here
+  };
+
+  const handleSellButtonPress = () => {
+    if (!isUserLoggedIn()) {
+      setAuthModalVisible(true);
+      return;
+    }
+    
+    setSellModalVisible(true);
   };
 
   return (
@@ -64,7 +76,7 @@ const ChatScreen = ({ navigation }) => {
             <Text style={styles.bottomNavIcon}>📢</Text>
             <Text style={styles.bottomNavLabel}>My Ads</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.sellNowButton} onPress={() => setSellModalVisible(true)}>
+          <TouchableOpacity style={styles.sellNowButton} onPress={handleSellButtonPress}>
             <Text style={styles.sellNowPlus}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomNavItem}>
@@ -83,6 +95,22 @@ const ChatScreen = ({ navigation }) => {
         visible={sellModalVisible}
         onClose={() => setSellModalVisible(false)}
         onSelectOption={handleSellOption}
+        navigation={navigation}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onSignIn={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignInScreen');
+        }}
+        onSignUp={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignUpScreen');
+        }}
+        action="sell"
         navigation={navigation}
       />
     </SafeAreaView>

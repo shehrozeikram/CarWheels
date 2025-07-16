@@ -60,7 +60,7 @@ const BrandModelsScreen = () => {
       <View style={{ backgroundColor: '#193A7A', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', height: Platform.OS === 'ios' ? 60 : 56, paddingHorizontal: 12, backgroundColor: '#193A7A', borderBottomLeftRadius: 18, borderBottomRightRadius: 18, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8, marginRight: 8 }}>
-            <Image source={require('../assets/images/back_arrow.png')} style={{ width: 24, height: 24, tintColor: '#fff' }} />
+            <Image source={require('../assets/images/back_arrow.png')} style={{ width: 22, height: 22, tintColor: '#fff', resizeMode: 'contain' }} />
           </TouchableOpacity>
           <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700' }}>{brand} Models</Text>
         </View>

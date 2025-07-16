@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import SellModal from '../modals/SellModal';
+import AuthModal from '../modals/AuthModal';
+import SuccessModal from '../modals/SuccessModal';
+import { isUserLoggedIn, getCurrentUser, clearUserSession, formatUserName } from './auth/AuthUtils';
 
 const Option = ({ icon, label, right, onPress }) => (
   <TouchableOpacity style={styles.optionRow} onPress={onPress} activeOpacity={0.7}>
@@ -12,11 +15,38 @@ const Option = ({ icon, label, right, onPress }) => (
 
 const ProfileScreen = ({ navigation }) => {
   const [sellModalVisible, setSellModalVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+
+  const currentUser = getCurrentUser();
+  const isLoggedIn = isUserLoggedIn();
 
   const handleSellOption = (option) => {
     setSellModalVisible(false);
     console.log('Selected sell option:', option);
     // Handle different sell options here
+  };
+
+  const handleLogout = () => {
+    clearUserSession();
+    setSuccessModalVisible(true);
+  };
+
+  const handleSignIn = () => {
+    navigation.navigate('SignInScreen');
+  };
+
+  const handleSignUp = () => {
+    navigation.navigate('SignUpScreen');
+  };
+
+  const handleSellButtonPress = () => {
+    if (!isUserLoggedIn()) {
+      setAuthModalVisible(true);
+      return;
+    }
+    
+    setSellModalVisible(true);
   };
 
   return (
@@ -25,10 +55,26 @@ const ProfileScreen = ({ navigation }) => {
         {/* iOS blue status bar area */}
         {Platform.OS === 'ios' && <SafeAreaView style={{ backgroundColor: '#2563eb' }} />}
         <View style={styles.headerGradient}>
-          <Text style={styles.profileName}>Shehroze Ikram</Text>
-          <TouchableOpacity style={styles.viewProfileBtn}>
-            <Text style={styles.viewProfileText}>View Profile </Text>
-          </TouchableOpacity>
+          {isLoggedIn ? (
+            <>
+              <Text style={styles.profileName}>{formatUserName(currentUser)}</Text>
+              <TouchableOpacity style={styles.viewProfileBtn}>
+                <Text style={styles.viewProfileText}>View Profile </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.profileName}>Guest User</Text>
+              <View style={styles.authButtons}>
+                <TouchableOpacity style={styles.signInBtn} onPress={handleSignIn}>
+                  <Text style={styles.signInBtnText}>Sign In</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.signUpBtn} onPress={handleSignUp}>
+                  <Text style={styles.signUpBtnText}>Sign Up</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Personal Section */}
@@ -45,11 +91,28 @@ const ProfileScreen = ({ navigation }) => {
           <Option icon={'🚗'} label="Sell My Car" />
           <Option icon={'🚗'} label="Buy Used Car" />
           <Option icon={'🚗'} label="Buy New Car" />
-          {/* Logout button at the bottom of scrollview */}
-          <TouchableOpacity style={styles.logoutRow} activeOpacity={0.7}>
-            <Text style={styles.logoutIcon}>🔓</Text>
-            <Text style={styles.logoutLabel}>Logout</Text>
-          </TouchableOpacity>
+          {/* Authentication Section */}
+          {isLoggedIn ? (
+            <>
+              <Text style={styles.sectionTitle}>Account</Text>
+              <Option icon={'👤'} label="Edit Profile" />
+              <Option icon={'🔒'} label="Change Password" />
+              <Option icon={'📧'} label="Email Preferences" />
+              <View style={styles.sectionDivider} />
+              {/* Logout button */}
+              <TouchableOpacity style={styles.logoutRow} activeOpacity={0.7} onPress={handleLogout}>
+                <Text style={styles.logoutIcon}>🔓</Text>
+                <Text style={styles.logoutLabel}>Logout</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>Account</Text>
+              <Option icon={'🔐'} label="Sign In to your account" onPress={handleSignIn} />
+              <Option icon={'📝'} label="Create new account" onPress={handleSignUp} />
+              <View style={styles.sectionDivider} />
+            </>
+          )}
         </ScrollView>
 
         {/* Bottom Navigation Bar */}
@@ -62,7 +125,7 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.bottomNavIcon}>📢</Text>
             <Text style={styles.bottomNavLabel}>My Ads</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.sellNowButton} onPress={() => setSellModalVisible(true)}>
+          <TouchableOpacity style={styles.sellNowButton} onPress={handleSellButtonPress}>
             <Text style={styles.sellNowPlus}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ChatScreen')}>
@@ -82,6 +145,31 @@ const ProfileScreen = ({ navigation }) => {
         onClose={() => setSellModalVisible(false)}
         onSelectOption={handleSellOption}
         navigation={navigation}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onSignIn={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignInScreen');
+        }}
+        onSignUp={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignUpScreen');
+        }}
+        action="sell"
+        navigation={navigation}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={successModalVisible}
+        onClose={() => setSuccessModalVisible(false)}
+        title="Logged Out Successfully!"
+        message="You have been logged out of your account."
+        action="dismiss"
       />
     </SafeAreaView>
   );
@@ -187,6 +275,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#e11d48',
     fontWeight: '700',
+  },
+  authButtons: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 12,
+  },
+  signInBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  signInBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  signUpBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  signUpBtnText: {
+    color: '#193A7A',
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Bottom Navigation Styles
   bottomNav: { 

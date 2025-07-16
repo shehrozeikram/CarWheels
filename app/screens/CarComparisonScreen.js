@@ -2,16 +2,28 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, Image } from 'react-native';
 import { StatusBar } from 'react-native';
 import SellModal from '../modals/SellModal';
+import AuthModal from '../modals/AuthModal';
+import { isUserLoggedIn } from './auth/AuthUtils';
 
 const CarComparisonScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('Specifications');
   const [hideCommonSpecs, setHideCommonSpecs] = useState(true);
   const [sellModalVisible, setSellModalVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
 
   const handleSellOption = (option) => {
     setSellModalVisible(false);
     console.log('Selected sell option:', option);
     // Handle different sell options here
+  };
+
+  const handleSellButtonPress = () => {
+    if (!isUserLoggedIn()) {
+      setAuthModalVisible(true);
+      return;
+    }
+    
+    setSellModalVisible(true);
   };
 
   // Get car data from route params or use default
@@ -70,7 +82,7 @@ const CarComparisonScreen = ({ navigation, route }) => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
+            <Image source={require('../assets/images/back_arrow.png')} style={styles.backArrowImage} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>
             {car1.name} VS {car2.name}
@@ -220,7 +232,7 @@ const CarComparisonScreen = ({ navigation, route }) => {
             <Text style={styles.bottomNavIcon}>📢</Text>
             <Text style={styles.bottomNavLabel}>My Ads</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.sellNowButton} onPress={() => setSellModalVisible(true)}>
+          <TouchableOpacity style={styles.sellNowButton} onPress={handleSellButtonPress}>
             <Text style={styles.sellNowPlus}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ChatScreen')}>
@@ -239,6 +251,22 @@ const CarComparisonScreen = ({ navigation, route }) => {
         visible={sellModalVisible}
         onClose={() => setSellModalVisible(false)}
         onSelectOption={handleSellOption}
+        navigation={navigation}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onSignIn={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignInScreen');
+        }}
+        onSignUp={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignUpScreen');
+        }}
+        action="sell"
         navigation={navigation}
       />
     </SafeAreaView>
@@ -267,10 +295,11 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  backIcon: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
+  backArrowImage: {
+    width: 22,
+    height: 22,
+    tintColor: '#fff',
+    resizeMode: 'contain',
   },
   headerTitle: {
     color: '#fff',

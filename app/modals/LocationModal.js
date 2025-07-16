@@ -151,7 +151,7 @@ const LocationModal = ({ visible, onClose, onSelectLocation }) => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
+            <Image source={require('../assets/images/back_arrow.png')} style={styles.backArrowImage} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {currentView === 'cities' ? 'Select City' : selectedCity?.name}
@@ -183,10 +183,11 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  backIcon: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
+  backArrowImage: {
+    width: 22,
+    height: 22,
+    tintColor: '#fff',
+    resizeMode: 'contain',
   },
   headerTitle: {
     color: '#fff',

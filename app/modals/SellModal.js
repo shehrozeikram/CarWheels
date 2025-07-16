@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, Platform, Alert } from 'react-native';
+import { isUserLoggedIn, getAuthPromptMessage } from '../screens/auth/AuthUtils';
 
 const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
   const sellOptions = [
@@ -33,6 +34,30 @@ const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
                   style={styles.optionButton}
                   onPress={() => {
                     onClose();
+                    
+                    // Check if user is logged in
+                    if (!isUserLoggedIn()) {
+                      Alert.alert(
+                        'Authentication Required',
+                        getAuthPromptMessage('sell'),
+                        [
+                          {
+                            text: 'Cancel',
+                            style: 'cancel',
+                          },
+                          {
+                            text: 'Sign In',
+                            onPress: () => navigation.navigate('SignInScreen'),
+                          },
+                          {
+                            text: 'Sign Up',
+                            onPress: () => navigation.navigate('SignUpScreen'),
+                          },
+                        ]
+                      );
+                      return;
+                    }
+                    
                     if (navigation) {
                       switch (option.id) {
                         case 'car':

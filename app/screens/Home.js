@@ -4,6 +4,8 @@ import { WebView } from 'react-native-webview';
 import {  StatusBar } from 'react-native';
 import 'react-native-gesture-handler';
 import SellModal from '../modals/SellModal';
+import AuthModal from '../modals/AuthModal';
+import { isUserLoggedIn } from './auth/AuthUtils';
 
 const categories = [
   { label: 'Automatic cars', image: require('../assets/images/automatic_icon.png') },
@@ -581,6 +583,7 @@ const Home = ({ navigation, route }) => {
   // Add state for selected tab
   const [selectedTab, setSelectedTab] = useState('Used Cars');
   const [sellModalVisible, setSellModalVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [newListing, setNewListing] = useState(null);
 
@@ -610,6 +613,15 @@ const Home = ({ navigation, route }) => {
         // Navigate to auto parts selling screen
         break;
     }
+  };
+
+  const handleSellButtonPress = () => {
+    if (!isUserLoggedIn()) {
+      setAuthModalVisible(true);
+      return;
+    }
+    
+    setSellModalVisible(true);
   };
 
   return (
@@ -929,7 +941,7 @@ const Home = ({ navigation, route }) => {
             <Text style={styles.bottomNavIcon}>📢</Text>
             <Text style={styles.bottomNavLabel}>My Ads</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.sellNowButton} onPress={() => setSellModalVisible(true)}>
+          <TouchableOpacity style={styles.sellNowButton} onPress={handleSellButtonPress}>
             <Text style={styles.sellNowPlus}>+</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ChatScreen')}>
@@ -956,13 +968,29 @@ const Home = ({ navigation, route }) => {
           </View>
         )}
 
-        {/* Sell Modal */}
-        <SellModal
-          visible={sellModalVisible}
-          onClose={() => setSellModalVisible(false)}
-          onSelectOption={handleSellOption}
-          navigation={navigation}
-        />
+              {/* Sell Modal */}
+      <SellModal
+        visible={sellModalVisible}
+        onClose={() => setSellModalVisible(false)}
+        onSelectOption={handleSellOption}
+        navigation={navigation}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onSignIn={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignInScreen');
+        }}
+        onSignUp={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignUpScreen');
+        }}
+        action="sell"
+        navigation={navigation}
+      />
     </SafeAreaView>
   );
 };

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Platform, TextInput } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Platform, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SellModal from '../modals/SellModal';
 
@@ -947,8 +947,7 @@ const carData = {
 };
 
 const CarListScreen = ({ navigation, route }) => {
-  const { model } = route.params;
-  const cars = carData[model] || [];
+  const { model, showSuccessMessage, newListing } = route.params;
   const insets = useSafeAreaInsets();
 
   // Sticky bar state
@@ -957,6 +956,38 @@ const CarListScreen = ({ navigation, route }) => {
   
   // Sell modal state
   const [sellModalVisible, setSellModalVisible] = useState(false);
+
+  // Get cars from both static data and global state
+  const getCarsForModel = () => {
+    const staticCars = carData[model] || [];
+    const globalCars = global.carListings?.[model] || [];
+    
+    // Combine global cars (new listings) with static cars
+    const allCars = [...globalCars, ...staticCars];
+    
+    // Sort cars: Featured ads first, then by date (newest first)
+    return allCars.sort((a, b) => {
+      // First priority: Featured ads come first
+      if (a.isFeatured && !b.isFeatured) return -1;
+      if (!a.isFeatured && b.isFeatured) return 1;
+      
+      // Second priority: Newer ads come first (higher ID = newer)
+      return b.id - a.id;
+    });
+  };
+
+  const cars = getCarsForModel();
+
+  // Show success message if coming from new ad creation
+  useEffect(() => {
+    if (showSuccessMessage && newListing) {
+      Alert.alert(
+        'Success!',
+        'Your car ad has been posted successfully!',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [showSuccessMessage, newListing]);
 
   const handleSellOption = (option) => {
     setSellModalVisible(false);
@@ -1013,7 +1044,7 @@ const CarListScreen = ({ navigation, route }) => {
             </ScrollView>
           </View>
           <View style={styles.resultsRow}>
-            <Text style={styles.resultsText}>1156 results</Text>
+            <Text style={styles.resultsText}>{cars.length} results</Text>
             <TouchableOpacity><Text style={styles.saveSearch}>Save Search</Text></TouchableOpacity>
           </View>
         </View>
@@ -1070,7 +1101,7 @@ const CarListScreen = ({ navigation, route }) => {
         </View>
         {/* Results Row */}
         <View style={styles.resultsRow}>
-          <Text style={styles.resultsText}>1156 results</Text>
+          <Text style={styles.resultsText}>{cars.length} results</Text>
           <TouchableOpacity><Text style={styles.saveSearch}>Save Search</Text></TouchableOpacity>
         </View>
         {/* Car List */}
@@ -1092,6 +1123,17 @@ const CarListScreen = ({ navigation, route }) => {
                 )}
                 {car.isNew && (
                   <View style={styles.newBadge}><Text style={styles.newBadgeText}>new</Text></View>
+                )}
+                {car.isUserCreated && (
+                  <View style={styles.userCreatedBadge}><Text style={styles.userCreatedBadgeText}>Just Posted</Text></View>
+                )}
+                {car.isFeatured && (
+                  <View style={styles.featuredBadge}>
+                    <Image source={require('../assets/images/badge.png')} style={styles.featuredBadgeIconOut} />
+                    <View style={styles.featuredBadgeTextContainer}>
+                      <Text style={styles.featuredBadgeText}>FEATURED</Text>
+                    </View>
+                  </View>
                 )}
                 <View style={styles.imageCount}><Text style={styles.imageCountText}>{car.imagesCount}</Text></View>
               </View>
@@ -1154,6 +1196,17 @@ const CarListScreen = ({ navigation, route }) => {
                 )}
                 {car.isNew && (
                   <View style={styles.newBadge}><Text style={styles.newBadgeText}>new</Text></View>
+                )}
+                {car.isUserCreated && (
+                  <View style={styles.userCreatedBadge}><Text style={styles.userCreatedBadgeText}>Just Posted</Text></View>
+                )}
+                {car.isFeatured && (
+                  <View style={styles.featuredBadge}>
+                    <Image source={require('../assets/images/badge.png')} style={styles.featuredBadgeIconOut} />
+                    <View style={styles.featuredBadgeTextContainer}>
+                      <Text style={styles.featuredBadgeText}>FEATURED</Text>
+                    </View>
+                  </View>
                 )}
                 <View style={styles.imageCount}><Text style={styles.imageCountText}>{car.imagesCount}</Text></View>
               </View>
@@ -1294,6 +1347,43 @@ const styles = StyleSheet.create({
   starBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
   newBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#2563eb', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 0, zIndex: 2 },
   newBadgeText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  userCreatedBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#10b981', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, zIndex: 2 },
+  userCreatedBadgeText: { color: '#fff', fontWeight: '700', fontSize: 10, textTransform: 'uppercase' },
+  featuredBadge: { 
+    position: 'absolute', 
+    top: 6, 
+    right: 6, 
+    backgroundColor: '#fff', 
+    borderRadius: 10, 
+    paddingHorizontal: 4, 
+    paddingVertical: 0, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 2,
+    overflow: 'visible',
+    zIndex: 2 
+  },
+  featuredBadgeIconOut: {
+    position: 'absolute',
+    left: -10,
+    top: '36%',
+    transform: [{ translateY: -13 }],
+    width: 34,
+    height: 34,
+    resizeMode: 'contain',
+    zIndex: 2,
+  },
+  featuredBadgeTextContainer: {
+    paddingLeft: 18,
+    paddingRight: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  featuredBadgeText: { 
+    color: '#222', 
+    fontWeight: '700', 
+    fontSize: 11 
+  },
   imageCount: { position: 'absolute', left: 6, bottom: 6, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 0 },
   imageCountText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   cardMainContent: { flex: 1, minHeight: 130, justifyContent: 'center', gap: 7 },

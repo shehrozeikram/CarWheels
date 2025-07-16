@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ScrollView, Platform, Animated } from 'react-native';
+import { isUserLoggedIn, getAuthPromptMessage } from './auth/AuthUtils';
+import InfoModal from '../modals/InfoModal';
 
 const CarDetailScreen = ({ navigation, route }) => {
   // Use car data from route params if available, otherwise use placeholder data
@@ -17,7 +19,48 @@ const CarDetailScreen = ({ navigation, route }) => {
   };
 
   const [showStickyHeader, setShowStickyHeader] = useState(false);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [infoTitle, setInfoTitle] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+  const [infoIcon, setInfoIcon] = useState('ℹ️');
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  const handleContactAction = (action) => {
+    if (!isUserLoggedIn()) {
+      // This will be handled by the AuthModal system
+      return;
+    }
+
+    // Handle the actual contact action
+    switch (action) {
+      case 'call':
+        setInfoTitle('Call Seller');
+        setInfoMessage('Calling seller...');
+        setInfoIcon('📞');
+        setInfoModalVisible(true);
+        break;
+      case 'sms':
+        setInfoTitle('SMS');
+        setInfoMessage('Sending SMS...');
+        setInfoIcon('💬');
+        setInfoModalVisible(true);
+        break;
+      case 'chat':
+        setInfoTitle('Chat');
+        setInfoMessage('Opening chat...');
+        setInfoIcon('💭');
+        setInfoModalVisible(true);
+        break;
+      case 'whatsapp':
+        setInfoTitle('WhatsApp');
+        setInfoMessage('Opening WhatsApp...');
+        setInfoIcon('📱');
+        setInfoModalVisible(true);
+        break;
+      default:
+        break;
+    }
+  };
 
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -363,11 +406,29 @@ const CarDetailScreen = ({ navigation, route }) => {
         </Animated.ScrollView>
         {/* Bottom Bar */}
         <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.callSellerBtn}><Text style={styles.callSellerBtnText}>📞 Call seller</Text></TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.callSellerBtn}
+            onPress={() => handleContactAction('call')}
+          >
+            <Text style={styles.callSellerBtnText}>📞 Call seller</Text>
+          </TouchableOpacity>
           <View style={styles.bottomActionsRow}>
-            <TouchableOpacity style={styles.bottomAction}><Text style={styles.bottomActionText}>💬 SMS</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.bottomAction}><Text style={styles.bottomActionText}>💬 Chat</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.bottomAction}>
+            <TouchableOpacity 
+              style={styles.bottomAction}
+              onPress={() => handleContactAction('sms')}
+            >
+              <Text style={styles.bottomActionText}>💬 SMS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.bottomAction}
+              onPress={() => handleContactAction('chat')}
+            >
+              <Text style={styles.bottomActionText}>💬 Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.bottomAction}
+              onPress={() => handleContactAction('whatsapp')}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Image source={require('../assets/images/whatsapp_icon.webp')} style={styles.whatsappIcon} />
                 <Text style={styles.bottomActionText}> WhatsApp</Text>
@@ -376,6 +437,15 @@ const CarDetailScreen = ({ navigation, route }) => {
           </View>
         </View>
       </View>
+
+      {/* Info Modal */}
+      <InfoModal
+        visible={infoModalVisible}
+        onClose={() => setInfoModalVisible(false)}
+        title={infoTitle}
+        message={infoMessage}
+        icon={infoIcon}
+      />
     </SafeAreaView>
   );
 };

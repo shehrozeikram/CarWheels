@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, ScrollView, TextInput, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, ScrollView, TextInput, Image } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import LocationModal from '../../../modals/LocationModal';
 import CarModelModal from '../../../modals/CarModelModal';
 import RegistrationModal from '../../../modals/RegistrationModal';
 import BodyColorModal from '../../../modals/BodyColorModal';
+import ErrorModal from '../../../modals/ErrorModal';
+import { getCurrentUser } from '../../auth/AuthUtils';
+
+// Global state for car listings - this would ideally be in a proper state management solution
+global.carListings = global.carListings || {};
 
 const SellYourCarScreen = ({ navigation }) => {
   const [whatsappEnabled, setWhatsappEnabled] = useState(true);
@@ -21,6 +26,8 @@ const SellYourCarScreen = ({ navigation }) => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [kmsDriven, setKmsDriven] = useState('');
   const [price, setPrice] = useState('');
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const formFields = [
     { icon: '🏢', label: 'Location', hasChevron: true },
@@ -48,7 +55,8 @@ const SellYourCarScreen = ({ navigation }) => {
         console.log('User cancelled image picker');
       } else if (response.error) {
         console.log('ImagePicker Error: ', response.error);
-        Alert.alert('Error', 'Failed to select image. Please try again.');
+        setErrorMessage('Failed to select image. Please try again.');
+        setErrorModalVisible(true);
       } else if (response.assets) {
         const newImages = response.assets.map(asset => asset.uri);
         setSelectedImages(prev => [...prev, ...newImages]);
@@ -71,13 +79,40 @@ const SellYourCarScreen = ({ navigation }) => {
            price.trim() !== '';
   };
 
+  // Function to get category from car model
+  const getCategoryFromModel = (model) => {
+    // Extract the brand and model from the full model string
+    // Example: "Honda Civic 2023" -> "Honda Civic"
+    const parts = model.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0]} ${parts[1]}`;
+    }
+    return model;
+  };
+
+  // Function to add new listing to global state
+  const addNewListingToCategory = (newListing) => {
+    const category = getCategoryFromModel(selectedCarModel);
+    
+    // Initialize category if it doesn't exist
+    if (!global.carListings[category]) {
+      global.carListings[category] = [];
+    }
+    
+    // Add the new listing to the category
+    global.carListings[category].unshift(newListing); // Add to beginning of array
+    
+    console.log(`Added new listing to category: ${category}`);
+    console.log('Updated global car listings:', global.carListings);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backIcon}>←</Text>
+            <Image source={require('../../../assets/images/back_arrow.png')} style={styles.backArrowImage} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Sell Your Car</Text>
           <View style={styles.headerSpacer} />
@@ -362,6 +397,8 @@ const SellYourCarScreen = ({ navigation }) => {
                     image: selectedImages.length > 0 ? { uri: selectedImages[0] } : require('../../../assets/images/alto.webp'), // Use first selected image or default
                     isNew: true,
                     isStarred: false,
+                    isUserCreated: true, // Mark as user-created
+                    status: 'active', // Set initial status
                     imagesCount: selectedImages.length,
                     managed: false,
                     inspected: null,
@@ -381,17 +418,25 @@ const SellYourCarScreen = ({ navigation }) => {
                       description: descriptionText,
                       images: selectedImages, // Include images in form data
                       contactInfo: {
-                        name: 'Shehroze Ikram',
-                        mobile: '03214554035',
+                        name: getCurrentUser()?.name || 'Shehroze Ikram',
+                        email: getCurrentUser()?.email || 'shehroze@example.com',
+                        mobile: getCurrentUser()?.mobile || '03214554035',
                         whatsappEnabled: whatsappEnabled
                       }
                     }
                   };
 
-                  // Navigate back to Home with success message
-                  navigation.navigate('Home', { 
-                    newListing: newCarListing,
-                    showSuccessMessage: true 
+                  // Add the new listing to the appropriate category
+                  addNewListingToCategory(newCarListing);
+
+                  // Get the category for navigation
+                  const category = getCategoryFromModel(selectedCarModel);
+
+                  // Navigate to the specific category list with success message
+                  navigation.navigate('CarListScreen', { 
+                    model: category,
+                    showSuccessMessage: true,
+                    newListing: newCarListing
                   });
                 }
               }}
@@ -435,6 +480,15 @@ const SellYourCarScreen = ({ navigation }) => {
         onClose={() => setBodyColorModalVisible(false)}
         onSelectColor={setSelectedBodyColor}
       />
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={errorModalVisible}
+        onClose={() => setErrorModalVisible(false)}
+        title="Error"
+        message={errorMessage}
+        action="try_again"
+      />
     </SafeAreaView>
   );
 };
@@ -460,10 +514,11 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
-  backIcon: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
+  backArrowImage: {
+    width: 22,
+    height: 22,
+    tintColor: '#fff',
+    resizeMode: 'contain',
   },
   headerTitle: {
     color: '#fff',

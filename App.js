@@ -21,6 +21,8 @@ import ChoosePlanScreen from './app/screens/selling/car/ChoosePlanScreen';
 import SellYourCarScreen from './app/screens/selling/car/SellYourCarScreen';
 import BikeChoosePlanScreen from './app/screens/selling/bike/ChoosePlanScreen';
 import AutoPartsChoosePlanScreen from './app/screens/selling/autoparts/ChoosePlanScreen';
+import SignInScreen from './app/screens/auth/SignInScreen';
+import SignUpScreen from './app/screens/auth/SignUpScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const Stack = createStackNavigator();
@@ -46,6 +48,8 @@ export default function App() {
           <Stack.Screen name="SellYourCarScreen" component={SellYourCarScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BikeChoosePlanScreen" component={BikeChoosePlanScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AutoPartsChoosePlanScreen" component={AutoPartsChoosePlanScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SignInScreen" component={SignInScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SignUpScreen" component={SignUpScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

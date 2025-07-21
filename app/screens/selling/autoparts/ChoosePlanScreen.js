@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, Image } from 'react-native';
 
 const ChoosePlanScreen = ({ navigation }) => {
   return (
@@ -27,14 +27,14 @@ const ChoosePlanScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
   },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, ScrollView, Platform, StatusBar, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, ScrollView, Platform, StatusBar, TextInput, Image } from 'react-native';
 
 const RegistrationModal = ({ visible, onClose, onSelectRegistration }) => {
   const [searchText, setSearchText] = useState('');
@@ -97,6 +97,9 @@ const RegistrationModal = ({ visible, onClose, onSelectRegistration }) => {
               placeholderTextColor="#999"
               value={searchText}
               onChangeText={setSearchText}
+              textAlign="left"
+              textAlignVertical="center"
+              writingDirection="ltr"
             />
           </View>
         </View>
@@ -163,6 +166,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#222',
+    textAlign: 'left',
+    writingDirection: 'ltr',
   },
   listContainer: {
     flex: 1,

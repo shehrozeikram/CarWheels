@@ -1,7 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Platform, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Platform, TextInput, Alert, I18nManager } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SellModal from '../modals/SellModal';
+import AuthModal from '../modals/AuthModal';
+import SuccessModal from '../modals/SuccessModal';
+import { isUserLoggedIn } from './auth/AuthUtils';
+import { Header, SearchBar, CarCard, LoadingSpinner, EmptyState } from '../components';
+import { getCarsForModel, initializeCarData, addModelUpdateListener } from '../utils/CarDataManager';
 
 const carData = {
   'Daihatsu Mira': [
@@ -160,6 +165,14 @@ const carData = {
       imagesCount: 12,
       managed: true,
       inspected: '8.9',
+      biddingEnabled: true,
+      biddingEndTime: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days from now
+      currentBid: 2500000, // PKR 25 lacs
+      bids: [
+        { id: 1, amount: 2500000, bidder: 'Ahmed Khan', timestamp: Date.now() - 3600000 },
+        { id: 2, amount: 2400000, bidder: 'Fatima Ali', timestamp: Date.now() - 7200000 },
+      ],
+      highestBidder: 'Ahmed Khan',
     },
     {
       id: 2,
@@ -175,6 +188,13 @@ const carData = {
       imagesCount: 10,
       managed: true,
       inspected: '8.7',
+      biddingEnabled: true,
+      biddingEndTime: Date.now() + (5 * 24 * 60 * 60 * 1000), // 5 days from now
+      currentBid: 2200000, // PKR 22 lacs
+      bids: [
+        { id: 1, amount: 2200000, bidder: 'Muhammad Hassan', timestamp: Date.now() - 1800000 },
+      ],
+      highestBidder: 'Muhammad Hassan',
     },
     {
       id: 3,
@@ -956,36 +976,32 @@ const CarListScreen = ({ navigation, route }) => {
   
   // Sell modal state
   const [sellModalVisible, setSellModalVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
 
-  // Get cars from both static data and global state
-  const getCarsForModel = () => {
-    const staticCars = carData[model] || [];
-    const globalCars = global.carListings?.[model] || [];
+  // Car data state - now using state to trigger re-renders
+  const [cars, setCars] = useState([]);
+
+  // Initialize car data manager with static data
+  useEffect(() => {
+    initializeCarData(carData);
     
-    // Combine global cars (new listings) with static cars
-    const allCars = [...globalCars, ...staticCars];
+    // Get initial cars for this model
+    const initialCars = getCarsForModel(model, carData);
+    setCars(initialCars);
     
-    // Sort cars: Featured ads first, then by date (newest first)
-    return allCars.sort((a, b) => {
-      // First priority: Featured ads come first
-      if (a.isFeatured && !b.isFeatured) return -1;
-      if (!a.isFeatured && b.isFeatured) return 1;
-      
-      // Second priority: Newer ads come first (higher ID = newer)
-      return b.id - a.id;
+    // Listen for updates to any car in this model
+    const unsubscribe = addModelUpdateListener(model, carData, (updatedCars) => {
+      setCars(updatedCars);
     });
-  };
-
-  const cars = getCarsForModel();
+    
+    return unsubscribe;
+  }, [model]);
 
   // Show success message if coming from new ad creation
   useEffect(() => {
     if (showSuccessMessage && newListing) {
-      Alert.alert(
-        'Success!',
-        'Your car ad has been posted successfully!',
-        [{ text: 'OK' }]
-      );
+      setSuccessModalVisible(true);
     }
   }, [showSuccessMessage, newListing]);
 
@@ -1017,16 +1033,16 @@ const CarListScreen = ({ navigation, route }) => {
   const Root = Platform.OS === 'ios' ? SafeAreaView : View;
   const rootStyle = [styles.safeArea];
   return (
-    <Root style={rootStyle}>
+    <Root style={[rootStyle, { direction: 'ltr' }]}>
       {/* Blue background only for top safe area on iOS */}
       {Platform.OS === 'ios' && insets.top > 0 && (
-        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: insets.top, backgroundColor: '#193A7A', zIndex: 100 }} />
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, height: insets.top, backgroundColor: '#900C3F', zIndex: 100 }} />
       )}
       {/* Sticky Filter/Sort Bar and Results Row */}
       {showStickyBar && (
         <View style={{ position: 'absolute', top: insets.top , left: 0, right: 0, zIndex: 200 }}>
           <View style={styles.filterBar}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topTabs}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.topTabs, { direction: 'ltr' }]}>
               <TouchableOpacity style={[styles.filterBtn, styles.filterBtnSortFilter]}>
                 <Text style={styles.filterBtnSortIcon}>⇅</Text>
                 <Text style={styles.filterBtnSortFilterText}>Sort</Text>
@@ -1054,15 +1070,15 @@ const CarListScreen = ({ navigation, route }) => {
       {Platform.OS === 'android' ? <View style={styles.topBlueBar} /> : null}
       {/* Main vertical scrollable content */}
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        style={{ flex: 1, direction: 'ltr' }}
+        contentContainerStyle={{ paddingBottom: 80, direction: 'ltr' }}
         showsVerticalScrollIndicator={true}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
         {/* Header/Search Bar */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBackBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.headerBackBtn}>
             <Image source={require('../assets/images/back_arrow.png')} style={styles.headerBackArrow} />
           </TouchableOpacity>
           <View style={styles.headerSearchWrapper}>
@@ -1071,6 +1087,9 @@ const CarListScreen = ({ navigation, route }) => {
               placeholder="Search for used cars"
               placeholderTextColor="#444"
               editable={false}
+              textAlign="left"
+              textAlignVertical="center"
+              writingDirection="ltr"
             />
             <TouchableOpacity style={styles.headerSearchIconBtn}>
               <Text style={styles.headerSearchIcon}>🔍</Text>
@@ -1082,7 +1101,7 @@ const CarListScreen = ({ navigation, route }) => {
         </View>
         {/* Filter/Sort Bar */}
         <View style={styles.filterBar}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topTabs}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.topTabs, { direction: 'ltr' }]}>
             <TouchableOpacity style={[styles.filterBtn, styles.filterBtnSortFilter]}>
               <Text style={styles.filterBtnSortIcon}>⇅</Text>
               <Text style={styles.filterBtnSortFilterText}>Sort</Text>
@@ -1136,6 +1155,18 @@ const CarListScreen = ({ navigation, route }) => {
                   </View>
                 )}
                 <View style={styles.imageCount}><Text style={styles.imageCountText}>{car.imagesCount}</Text></View>
+                
+                {car.biddingEnabled && (
+                  <View style={styles.biddingBadge}>
+                    <Text style={styles.biddingIcon}>🏷️</Text>
+                    <Text style={styles.biddingText}>BIDDING</Text>
+                    {car.biddingEndTime > Date.now() && (
+                      <Text style={styles.biddingTimer}>
+                        {Math.floor((car.biddingEndTime - Date.now()) / (1000 * 60 * 60 * 24))}d {Math.floor(((car.biddingEndTime - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))}h
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
               <View style={styles.cardMainContent}>
                 <Text style={styles.cardTitle} numberOfLines={2}>{car.title}</Text>
@@ -1152,20 +1183,43 @@ const CarListScreen = ({ navigation, route }) => {
                   <Text style={styles.cardInfoIcon}>📍</Text>
                   <Text style={styles.cardInfoText}>{car.city}</Text>
                 </View>
+                
+                {car.biddingEnabled && (
+                  <View style={styles.biddingInfo}>
+                    <Text style={styles.biddingCurrentBid}>
+                      Current Bid: PKR {car.currentBid?.toLocaleString() || '0'}
+                    </Text>
+                    <Text style={styles.biddingCount}>
+                      {car.bids?.length || 0} bids placed
+                    </Text>
+                  </View>
+                )}
               </View>
               <TouchableOpacity style={styles.heartButton}>
                 <Text style={styles.heartText}>♡</Text>
               </TouchableOpacity>
             </View>
-            {(car.managed || car.certified) && (
+            {(car.managed || car.certified || car.biddingEnabled) && (
               <>
                 <View style={{ height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 10, marginBottom: 8 }} />
                 <View style={styles.badgesRow}>
-                  <View style={styles.badge}><Text style={styles.badgeIcon}>🛞</Text><View style={styles.badgeTextBg}><Text style={styles.badgeText}>MANAGED BY PAKWHEELS</Text></View></View>
-                  <View style={styles.badge}>
-                    <Image source={require('../assets/images/certified_badge.png')} style={styles.certifiedBadgeIcon} />
-                    <View style={styles.badgeTextBg}><Text style={styles.badgeText}>{`INSPECTED ${Math.floor(Math.random() * 6) + 5}/10`}</Text></View>
-                  </View>
+                  {car.managed && (
+                    <View style={styles.badge}><Text style={styles.badgeIcon}>🛞</Text><View style={styles.badgeTextBg}><Text style={styles.badgeText}>MANAGED BY PAKWHEELS</Text></View></View>
+                  )}
+                  {car.certified && (
+                    <View style={styles.badge}>
+                      <Image source={require('../assets/images/certified_badge.png')} style={styles.certifiedBadgeIcon} />
+                      <View style={styles.badgeTextBg}><Text style={styles.badgeText}>{`INSPECTED ${Math.floor(Math.random() * 6) + 5}/10`}</Text></View>
+                    </View>
+                  )}
+                  {car.biddingEnabled && (
+                    <View style={styles.biddingBadgeRow}>
+                      <Text style={styles.biddingBadgeIcon}>🏷️</Text>
+                      <View style={styles.biddingBadgeTextBg}>
+                        <Text style={styles.biddingBadgeText}>LIVE BIDDING</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
               </>
             )}
@@ -1209,6 +1263,18 @@ const CarListScreen = ({ navigation, route }) => {
                   </View>
                 )}
                 <View style={styles.imageCount}><Text style={styles.imageCountText}>{car.imagesCount}</Text></View>
+                
+                {car.biddingEnabled && (
+                  <View style={styles.biddingBadge}>
+                    <Text style={styles.biddingIcon}>🏷️</Text>
+                    <Text style={styles.biddingText}>BIDDING</Text>
+                    {car.biddingEndTime > Date.now() && (
+                      <Text style={styles.biddingTimer}>
+                        {Math.floor((car.biddingEndTime - Date.now()) / (1000 * 60 * 60 * 24))}d {Math.floor(((car.biddingEndTime - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))}h
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
               <View style={styles.cardMainContent}>
                 <Text style={styles.cardTitle} numberOfLines={2}>{car.title} (Extra)</Text>
@@ -1225,20 +1291,43 @@ const CarListScreen = ({ navigation, route }) => {
                   <Text style={styles.cardInfoIcon}>📍</Text>
                   <Text style={styles.cardInfoText}>{car.city}</Text>
                 </View>
+                
+                {car.biddingEnabled && (
+                  <View style={styles.biddingInfo}>
+                    <Text style={styles.biddingCurrentBid}>
+                      Current Bid: PKR {car.currentBid?.toLocaleString() || '0'}
+                    </Text>
+                    <Text style={styles.biddingCount}>
+                      {car.bids?.length || 0} bids placed
+                    </Text>
+                  </View>
+                )}
               </View>
               <TouchableOpacity style={styles.heartButton}>
                 <Text style={styles.heartText}>♡</Text>
               </TouchableOpacity>
             </View>
-            {(car.managed || car.certified) && (
+            {(car.managed || car.certified || car.biddingEnabled) && (
               <>
                 <View style={{ height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 10, marginBottom: 8 }} />
                 <View style={styles.badgesRow}>
-                  <View style={styles.badge}><Text style={styles.badgeIcon}>🛞</Text><View style={styles.badgeTextBg}><Text style={styles.badgeText}>MANAGED BY PAKWHEELS</Text></View></View>
-                  <View style={styles.badge}>
-                    <Image source={require('../assets/images/certified_badge.png')} style={styles.certifiedBadgeIcon} />
-                    <View style={styles.badgeTextBg}><Text style={styles.badgeText}>{`INSPECTED ${Math.floor(Math.random() * 6) + 5}/10`}</Text></View>
-                  </View>
+                  {car.managed && (
+                    <View style={styles.badge}><Text style={styles.badgeIcon}>🛞</Text><View style={styles.badgeTextBg}><Text style={styles.badgeText}>MANAGED BY PAKWHEELS</Text></View></View>
+                  )}
+                  {car.certified && (
+                    <View style={styles.badge}>
+                      <Image source={require('../assets/images/certified_badge.png')} style={styles.certifiedBadgeIcon} />
+                      <View style={styles.badgeTextBg}><Text style={styles.badgeText}>{`INSPECTED ${Math.floor(Math.random() * 6) + 5}/10`}</Text></View>
+                    </View>
+                  )}
+                  {car.biddingEnabled && (
+                    <View style={styles.biddingBadgeRow}>
+                      <Text style={styles.biddingBadgeIcon}>🏷️</Text>
+                      <View style={styles.biddingBadgeTextBg}>
+                        <Text style={styles.biddingBadgeText}>LIVE BIDDING</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
               </>
             )}
@@ -1248,7 +1337,13 @@ const CarListScreen = ({ navigation, route }) => {
       {/* Floating SELL Button */}
       <TouchableOpacity 
         style={styles.sellButton}
-        onPress={() => setSellModalVisible(true)}
+        onPress={() => {
+          if (!isUserLoggedIn()) {
+            setAuthModalVisible(true);
+            return;
+          }
+          setSellModalVisible(true);
+        }}
       >
         <Text style={styles.sellButtonText}>SELL</Text>
       </TouchableOpacity>
@@ -1260,34 +1355,69 @@ const CarListScreen = ({ navigation, route }) => {
         onSelectOption={handleSellOption}
         navigation={navigation}
       />
+
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onSignIn={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignInScreen', {
+            returnScreen: 'CarListScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
+        }}
+        onSignUp={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignUpScreen', {
+            returnScreen: 'CarListScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
+        }}
+        action="sell"
+        navigation={navigation}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={successModalVisible}
+        onClose={() => setSuccessModalVisible(false)}
+        title="Success!"
+        message="Your car ad has been posted successfully!"
+        icon="🚗✅"
+        action="ok"
+      />
     </Root>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f9fafd' },
+  safeArea: { flex: 1, backgroundColor: '#f9fafd', direction: 'ltr' },
   topBlueBar: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     height: Platform.OS === 'android' ? 36 : 0, // mimic Home.js safe area blue
     width: '100%',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     height: 60,
     paddingHorizontal: 12,
+    direction: 'ltr',
     // Remove paddingTop logic, handled by topBlueBar
   },
   headerBackBtn: { padding: 8, marginRight: 4 },
   headerBackArrow: { width: 22, height: 22, resizeMode: 'contain', tintColor: '#fff' },
   headerSearchWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, marginHorizontal: 6, height: 38 },
-  headerSearchInput: { flex: 1, fontSize: 16, color: '#222', paddingHorizontal: 10, height: 38 },
+  headerSearchInput: { flex: 1, fontSize: 16, color: '#222', paddingHorizontal: 10, height: 38, textAlign: 'left', writingDirection: 'ltr' },
   headerSearchIconBtn: { padding: 6 },
   headerSearchIcon: { fontSize: 18, color: '#888' },
   headerHeartBtn: { padding: 8, marginLeft: 4 },
   headerHeartIcon: { fontSize: 22, color: '#fff' },
-  filterBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  filterBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', direction: 'ltr' },
   filterBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', borderRadius: 22, paddingHorizontal: 18, paddingVertical: 7, marginRight: 10, height: 38 },
   filterBtnText: { color: '#222', fontWeight: '600', fontSize: 15 },
   filterBtnSortFilter: {
@@ -1303,13 +1433,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  filterBtnSortFilterText: { color: '#2563eb', fontWeight: '700', fontSize: 15, marginLeft: 2 },
-  filterBtnSortIcon: { color: '#2563eb', fontSize: 18, marginRight: 4, fontWeight: '700' },
-  filterBtnFilterIcon: { color: '#2563eb', fontSize: 18, marginRight: 4, fontWeight: '700' },
+  filterBtnSortFilterText: { color: '#900C3F', fontWeight: '700', fontSize: 15, marginLeft: 2 },
+  filterBtnSortIcon: { color: '#900C3F', fontSize: 18, marginRight: 4, fontWeight: '700' },
+  filterBtnFilterIcon: { color: '#900C3F', fontSize: 18, marginRight: 4, fontWeight: '700' },
   filterIconBadgeWrapper: { position: 'relative', marginRight: 2, justifyContent: 'center', alignItems: 'center' },
   filterBadge: { position: 'absolute', top: -7, right: -10, backgroundColor: '#e11d48', borderRadius: 8, width: 18, height: 18, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
   filterBadgeText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  resultsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  resultsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', direction: 'ltr' },
   resultsText: { color: '#444', fontSize: 14, fontWeight: '400' },
   saveSearch: { color: '#4076A4', fontWeight: '400', fontSize: 14 },
   scrollContent: { padding: 12, paddingBottom: 80 },
@@ -1320,14 +1450,14 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     borderWidth: 2,
     borderColor: '#f3f4f6',
-    shadowColor: '#2563eb', // lighter blue shadow
+    shadowColor: '#900C3F', // lighter blue shadow
     shadowOpacity: 0.12,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 12 }, // bottom-only shadow
     elevation: 7, // Android
     position: 'relative',
   },
-  cardTopRow: { flexDirection: 'row', alignItems: 'flex-start', padding: 20 },
+  cardTopRow: { flexDirection: 'row', alignItems: 'flex-start', padding: 20, direction: 'ltr' },
   cardImageWrapper: { width: 150, height: 130, borderRadius: 14, overflow: 'hidden', borderWidth: 2, borderColor: '#e11d48', marginRight: 24, position: 'relative', backgroundColor: '#fff' },
   cardImage: { width: '100%', height: '100%' },
   starBadge: {
@@ -1345,7 +1475,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   starBadgeText: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
-  newBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#2563eb', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 0, zIndex: 2 },
+  newBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#900C3F', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 0, zIndex: 2 },
   newBadgeText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   userCreatedBadge: { position: 'absolute', top: 6, right: 6, backgroundColor: '#10b981', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, zIndex: 2 },
   userCreatedBadgeText: { color: '#fff', fontWeight: '700', fontSize: 10, textTransform: 'uppercase' },
@@ -1388,13 +1518,13 @@ const styles = StyleSheet.create({
   imageCountText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   cardMainContent: { flex: 1, minHeight: 130, justifyContent: 'center', gap: 7 },
   cardTitle: { fontWeight: '700', fontSize: 16, color: '#222' },
-  cardPrice: { fontWeight: '700', fontSize: 18, color: '#193A7A', marginBottom: 2, marginTop: -4 },
+  cardPrice: { fontWeight: '700', fontSize: 18, color: '#900C3F', marginBottom: 2, marginTop: -4 },
   cardInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2, columnGap: 6, },
   cardInfoIcon: { fontSize: 15, color: '#888', marginRight: 0 },
   cardInfoText: { color: '#888', fontSize: 14, marginRight: 10 },
   heartButton: { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 16, width: 32, height: 32, alignItems: 'center', justifyContent: 'center', elevation: 2 },
   heartText: { color: '#4076A4', fontSize: 18, fontWeight: '700' },
-  badgesRow: { flexDirection: 'row', alignItems: 'center', marginTop: 0, marginLeft: 10, marginBottom: 8 },
+  badgesRow: { flexDirection: 'row', alignItems: 'center', marginTop: 0, marginLeft: 10, marginBottom: 8, direction: 'ltr' },
   badge: {
     backgroundColor: '#fff',
     paddingHorizontal: 10,
@@ -1407,18 +1537,96 @@ const styles = StyleSheet.create({
   badgeText: { color: '#222222', fontWeight: '700', fontSize: 11 },
   certifiedBadgeIcon: { width: 22, height: 22, marginRight: 4, resizeMode: 'contain' },
   inspectionCard: { backgroundColor: '#fff', borderRadius: 12, marginHorizontal: 2, marginBottom: 18, padding: 16, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
-  inspectionCardTitle: { fontWeight: '700', fontSize: 18, color: '#193A7A', marginBottom: 4 },
+  inspectionCardTitle: { fontWeight: '700', fontSize: 18, color: '#900C3F', marginBottom: 4 },
   inspectionCardDesc: { color: '#444', fontSize: 15, marginBottom: 6 },
   inspectionCardLink: { color: '#1275D7', fontSize: 15, fontWeight: '500', marginTop: 2 },
-  sellButton: { position: 'absolute', bottom: 50, right: 24, backgroundColor: '#2563eb', borderRadius: 32, width: 60, height: 60, alignItems: 'center', justifyContent: 'center', elevation: 8, zIndex: 10, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+  sellButton: { position: 'absolute', bottom: 50, right: 24, backgroundColor: '#900C3F', borderRadius: 32, width: 60, height: 60, alignItems: 'center', justifyContent: 'center', elevation: 8, zIndex: 10, shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   sellButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   badgeTextBg: { backgroundColor: '#f3f4f6', paddingHorizontal: 6, borderRadius: 6, alignSelf: 'center', marginLeft: -4 },
+  // Bidding styles
+  biddingBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 2,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    maxWidth: 120,
+  },
+  biddingIcon: {
+    fontSize: 12,
+    marginRight: 3,
+  },
+  biddingText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#d97706',
+    textTransform: 'uppercase',
+  },
+  biddingTimer: {
+    fontSize: 8,
+    color: '#d97706',
+    fontWeight: '600',
+    marginLeft: 3,
+  },
+  biddingInfo: {
+    marginTop: 4,
+    padding: 6,
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  biddingCurrentBid: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#d97706',
+    marginBottom: 2,
+  },
+  biddingCount: {
+    fontSize: 10,
+    color: '#666',
+  },
+  biddingBadgeRow: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  biddingBadgeIcon: {
+    fontSize: 16,
+    color: '#d97706',
+    marginRight: 4,
+  },
+  biddingBadgeTextBg: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    alignSelf: 'center',
+    marginLeft: -4,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  biddingBadgeText: {
+    color: '#d97706',
+    fontWeight: '700',
+    fontSize: 10,
+  },
   topTabs: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingVertical: 0,
     paddingHorizontal: 0,
+    direction: 'ltr',
   },
   stickyHeader: {
     shadowColor: '#000',

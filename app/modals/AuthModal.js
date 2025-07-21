@@ -100,7 +100,15 @@ const AuthModal = ({ visible, onClose, onSignIn, onSignUp, action = 'sell', navi
               onPress={() => {
                 onClose();
                 if (navigation) {
-                  navigation.navigate('SignInScreen', { action });
+                  // Get current screen name from navigation state
+                  const currentRoute = navigation.getState()?.routes[navigation.getState().index];
+                  const currentScreen = currentRoute?.name || 'Home';
+                  
+                  navigation.navigate('SignInScreen', { 
+                    action,
+                    returnScreen: currentScreen,
+                    returnParams: currentRoute?.params
+                  });
                 } else {
                   onSignIn();
                 }
@@ -116,7 +124,15 @@ const AuthModal = ({ visible, onClose, onSignIn, onSignUp, action = 'sell', navi
               onPress={() => {
                 onClose();
                 if (navigation) {
-                  navigation.navigate('SignUpScreen', { action });
+                  // Get current screen name from navigation state
+                  const currentRoute = navigation.getState()?.routes[navigation.getState().index];
+                  const currentScreen = currentRoute?.name || 'Home';
+                  
+                  navigation.navigate('SignUpScreen', { 
+                    action,
+                    returnScreen: currentScreen,
+                    returnParams: currentRoute?.params
+                  });
                 } else {
                   onSignUp();
                 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, SafeAreaView, Image, I18nManager } from 'react-native';
 import { StatusBar } from 'react-native';
 import SellModal from '../modals/SellModal';
 import AuthModal from '../modals/AuthModal';
@@ -77,8 +77,8 @@ const CarComparisonScreen = ({ navigation, route }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
+      <View style={[styles.container, { direction: 'ltr' }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -92,7 +92,7 @@ const CarComparisonScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={[styles.content, { direction: 'ltr' }]} contentContainerStyle={{ direction: 'ltr' }} showsVerticalScrollIndicator={false}>
           {/* Car Comparison Overview */}
           <View style={styles.comparisonOverview}>
             <View style={styles.carSection}>
@@ -191,7 +191,7 @@ const CarComparisonScreen = ({ navigation, route }) => {
           {/* More Car Comparisons */}
           <View style={styles.moreComparisonsSection}>
             <Text style={styles.moreComparisonsTitle}>More car comparisons</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
               {moreComparisons.map((comparison, index) => (
                 <TouchableOpacity
                   key={index}
@@ -260,11 +260,19 @@ const CarComparisonScreen = ({ navigation, route }) => {
         onClose={() => setAuthModalVisible(false)}
         onSignIn={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignInScreen');
+          navigation.navigate('SignInScreen', {
+            returnScreen: 'CarComparisonScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         onSignUp={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen');
+          navigation.navigate('SignUpScreen', {
+            returnScreen: 'CarComparisonScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         action="sell"
         navigation={navigation}
@@ -276,21 +284,24 @@ const CarComparisonScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     paddingBottom: 40,
+    direction: 'ltr',
   },
   container: {
     flex: 1,
     backgroundColor: '#f9fafd',
+    direction: 'ltr',
   },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    direction: 'ltr',
   },
   backButton: {
     padding: 8,
@@ -331,6 +342,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
+    direction: 'ltr',
   },
   carSection: {
     flex: 1,
@@ -357,13 +369,13 @@ const styles = StyleSheet.create({
   carPrice: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2563eb',
+    color: '#900C3F',
     textAlign: 'center',
     marginBottom: 8,
   },
   usedCarLink: {
     fontSize: 14,
-    color: '#2563eb',
+    color: '#900C3F',
     fontWeight: '500',
   },
   vsSection: {
@@ -408,6 +420,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    direction: 'ltr',
   },
   tab: {
     paddingHorizontal: 16,
@@ -421,7 +434,7 @@ const styles = StyleSheet.create({
   activeTab: {
     backgroundColor: '#fff',
     elevation: 4,
-    shadowColor: '#2563eb',
+    shadowColor: '#900C3F',
     shadowOpacity: 0.25,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -434,7 +447,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   activeTabText: {
-    color: '#2563eb',
+    color: '#900C3F',
     fontWeight: '700',
   },
   hideCommonRow: {
@@ -444,10 +457,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 16,
     marginTop: 10,
+    direction: 'ltr',
   },
   hideCommonText: {
     fontSize: 14,
-    color: '#2563eb',
+    color: '#900C3F',
     fontWeight: '400',
     marginRight: 8,
     marginLeft: 200,
@@ -460,7 +474,7 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   toggleActive: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#900C3F',
   },
   toggleThumb: {
     width: 16,
@@ -584,6 +598,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    direction: 'ltr',
   },
   comparisonCarImage: {
     width: 80,
@@ -618,6 +633,7 @@ const styles = StyleSheet.create({
   comparisonCardNames: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    direction: 'ltr',
   },
   comparisonCarName: {
     fontSize: 14,
@@ -640,6 +656,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
     zIndex: 10,
     elevation: 10,
+    direction: 'ltr',
   },
   bottomNavItem: {
     alignItems: 'center',

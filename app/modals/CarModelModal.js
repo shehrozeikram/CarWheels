@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, ScrollView, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, ScrollView, Platform, StatusBar, Image } from 'react-native';
 
 const CarModelModal = ({ visible, onClose, onSelectModel }) => {
   const [selectedYear, setSelectedYear] = useState(null);
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

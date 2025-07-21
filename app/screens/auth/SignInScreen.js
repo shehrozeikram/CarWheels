@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import SuccessModal from '../../modals/SuccessModal';
 import ErrorModal from '../../modals/ErrorModal';
+import { Header } from '../../components';
 import InlineError from '../../components/InlineError';
 
 const SignInScreen = ({ navigation, route }) => {
@@ -111,16 +112,10 @@ const SignInScreen = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
-                  <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Image source={require('../../assets/images/back_arrow.png')} style={styles.backArrowImage} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sign In</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+          <Header
+            title="Sign In"
+            onBackPress={() => navigation.goBack()}
+          />
 
           {/* Logo and Welcome */}
           <View style={styles.logoSection}>
@@ -156,6 +151,9 @@ const SignInScreen = ({ navigation, route }) => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
               </View>
               <InlineError visible={!!emailError} message={emailError} />
@@ -177,6 +175,9 @@ const SignInScreen = ({ navigation, route }) => {
                   }}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -247,7 +248,11 @@ const SignInScreen = ({ navigation, route }) => {
           {/* Sign Up Link */}
           <View style={styles.signUpSection}>
             <Text style={styles.signUpText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('SignUpScreen')}>
+            <TouchableOpacity onPress={() => navigation.navigate('SignUpScreen', {
+              returnScreen: route.params?.returnScreen,
+              returnParams: route.params?.returnParams,
+              action: route.params?.action
+            })}>
               <Text style={styles.signUpLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
@@ -259,7 +264,22 @@ const SignInScreen = ({ navigation, route }) => {
         visible={successModalVisible}
         onClose={() => {
           setSuccessModalVisible(false);
-          navigation.navigate('Home');
+          // Navigate back to the previous screen or Home if no return screen specified
+          const returnScreen = route.params?.returnScreen;
+          const returnParams = route.params?.returnParams;
+          
+          if (returnScreen) {
+            if (returnParams) {
+              // Use replace to remove SignIn screen from navigation stack
+              navigation.replace(returnScreen, returnParams);
+            } else {
+              // Use replace to remove SignIn screen from navigation stack
+              navigation.replace(returnScreen);
+            }
+          } else {
+            // Use replace to remove SignIn screen from navigation stack
+            navigation.replace('Home');
+          }
         }}
         title="Welcome Back!"
         message="You have successfully signed in to your account."
@@ -281,7 +301,7 @@ const SignInScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
   },
   container: {
     flex: 1,
@@ -292,7 +312,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -381,6 +401,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     paddingVertical: 16,
+    textAlign: 'left',
+    writingDirection: 'ltr',
   },
   eyeButton: {
     padding: 8,
@@ -394,18 +416,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   forgotPasswordText: {
-    color: '#193A7A',
+    color: '#900C3F',
     fontSize: 14,
     fontWeight: '600',
   },
   signInButton: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 24,
     elevation: 2,
-    shadowColor: '#193A7A',
+    shadowColor: '#900C3F',
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -473,7 +495,7 @@ const styles = StyleSheet.create({
   signUpLink: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#193A7A',
+    color: '#900C3F',
   },
 });
 

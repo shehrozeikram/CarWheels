@@ -10,6 +10,8 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   ScrollView,
+  Image,
+  I18nManager,
 } from 'react-native';
 import SuccessModal from '../../modals/SuccessModal';
 import ErrorModal from '../../modals/ErrorModal';
@@ -138,13 +140,14 @@ const SignUpScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
       <KeyboardAvoidingView 
-        style={styles.container}
+        style={[styles.container, { direction: 'ltr' }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { direction: 'ltr' }]}
+          style={{ direction: 'ltr' }}
           showsVerticalScrollIndicator={false}
         >
           {/* Header */}
@@ -191,6 +194,9 @@ const SignUpScreen = ({ navigation, route }) => {
                     if (fullNameError) setFullNameError('');
                   }}
                   autoCapitalize="words"
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
               </View>
               <InlineError visible={!!fullNameError} message={fullNameError} />
@@ -213,6 +219,9 @@ const SignUpScreen = ({ navigation, route }) => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
               </View>
               <InlineError visible={!!emailError} message={emailError} />
@@ -234,6 +243,9 @@ const SignUpScreen = ({ navigation, route }) => {
                   }}
                   keyboardType="phone-pad"
                   maxLength={11}
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
               </View>
               <InlineError visible={!!mobileError} message={mobileError} />
@@ -255,6 +267,9 @@ const SignUpScreen = ({ navigation, route }) => {
                   }}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -285,6 +300,9 @@ const SignUpScreen = ({ navigation, route }) => {
                   }}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -365,7 +383,11 @@ const SignUpScreen = ({ navigation, route }) => {
           {/* Sign In Link */}
           <View style={styles.signInSection}>
             <Text style={styles.signInText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('SignInScreen')}>
+            <TouchableOpacity onPress={() => navigation.navigate('SignInScreen', {
+              returnScreen: route.params?.returnScreen,
+              returnParams: route.params?.returnParams,
+              action: route.params?.action
+            })}>
               <Text style={styles.signInLink}>Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -377,7 +399,22 @@ const SignUpScreen = ({ navigation, route }) => {
         visible={successModalVisible}
         onClose={() => {
           setSuccessModalVisible(false);
-          navigation.navigate('Home');
+          // Navigate back to the previous screen or Home if no return screen specified
+          const returnScreen = route.params?.returnScreen;
+          const returnParams = route.params?.returnParams;
+          
+          if (returnScreen) {
+            if (returnParams) {
+              // Use replace to remove SignUp screen from navigation stack
+              navigation.replace(returnScreen, returnParams);
+            } else {
+              // Use replace to remove SignUp screen from navigation stack
+              navigation.replace(returnScreen);
+            }
+          } else {
+            // Use replace to remove SignUp screen from navigation stack
+            navigation.replace('Home');
+          }
         }}
         title="Welcome to CarWheels!"
         message="Your account has been created successfully. You can now access all features!"
@@ -399,24 +436,27 @@ const SignUpScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
+    direction: 'ltr',
   },
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    direction: 'ltr',
   },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 40,
   },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     paddingHorizontal: 16,
     paddingVertical: 12,
+    direction: 'ltr',
   },
   backButton: {
     padding: 8,
@@ -488,6 +528,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderWidth: 1,
     borderColor: '#e9ecef',
+    direction: 'ltr',
   },
   inputIcon: {
     fontSize: 18,
@@ -499,6 +540,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     paddingVertical: 16,
+    textAlign: 'left',
+    writingDirection: 'ltr',
   },
   eyeButton: {
     padding: 8,
@@ -519,20 +562,21 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    direction: 'ltr',
   },
   checkbox: {
     width: 20,
     height: 20,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#193A7A',
+    borderColor: '#900C3F',
     marginRight: 12,
     marginTop: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
   },
   checkmark: {
     color: '#fff',
@@ -550,13 +594,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   signUpButton: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 24,
     elevation: 2,
-    shadowColor: '#193A7A',
+    shadowColor: '#900C3F',
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
@@ -573,6 +617,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 24,
+    direction: 'ltr',
   },
   dividerLine: {
     flex: 1,
@@ -588,6 +633,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 32,
+    direction: 'ltr',
   },
   socialButton: {
     flex: 1,
@@ -616,6 +662,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
+    direction: 'ltr',
   },
   signInText: {
     fontSize: 16,
@@ -624,7 +671,7 @@ const styles = StyleSheet.create({
   signInLink: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#193A7A',
+    color: '#900C3F',
   },
 });
 

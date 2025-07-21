@@ -7,6 +7,7 @@ import RegistrationModal from '../../../modals/RegistrationModal';
 import BodyColorModal from '../../../modals/BodyColorModal';
 import ErrorModal from '../../../modals/ErrorModal';
 import { getCurrentUser } from '../../auth/AuthUtils';
+import { addCarToManager } from '../../../utils/CarDataManager';
 
 // Global state for car listings - this would ideally be in a proper state management solution
 global.carListings = global.carListings || {};
@@ -101,6 +102,11 @@ const SellYourCarScreen = ({ navigation }) => {
     
     // Add the new listing to the category
     global.carListings[category].unshift(newListing); // Add to beginning of array
+    
+    // Also add to global car data manager for real-time updates
+    if (newListing.id) {
+      addCarToManager(newListing.id, newListing);
+    }
     
     console.log(`Added new listing to category: ${category}`);
     console.log('Updated global car listings:', global.carListings);
@@ -261,6 +267,9 @@ const SellYourCarScreen = ({ navigation }) => {
                   value={kmsDriven}
                   onChangeText={setKmsDriven}
                   keyboardType="numeric"
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
               </View>
             </View>
@@ -277,6 +286,9 @@ const SellYourCarScreen = ({ navigation }) => {
                   value={price}
                   onChangeText={setPrice}
                   keyboardType="numeric"
+                  textAlign="left"
+                  textAlignVertical="center"
+                  writingDirection="ltr"
                 />
               </View>
             </View>
@@ -295,6 +307,8 @@ const SellYourCarScreen = ({ navigation }) => {
                   textAlignVertical="top"
                   value={descriptionText}
                   onChangeText={setDescriptionText}
+                  textAlign="left"
+                  writingDirection="ltr"
                 />
               </View>
             </View>
@@ -426,6 +440,9 @@ const SellYourCarScreen = ({ navigation }) => {
                     }
                   };
 
+                  console.log('Creating new car listing with user info:', getCurrentUser());
+                  console.log('New car listing:', newCarListing);
+
                   // Add the new listing to the appropriate category
                   addNewListingToCategory(newCarListing);
 
@@ -433,7 +450,8 @@ const SellYourCarScreen = ({ navigation }) => {
                   const category = getCategoryFromModel(selectedCarModel);
 
                   // Navigate to the specific category list with success message
-                  navigation.navigate('CarListScreen', { 
+                  // Use replace to avoid going back to selling screens
+                  navigation.replace('CarListScreen', { 
                     model: category,
                     showSuccessMessage: true,
                     newListing: newCarListing
@@ -496,14 +514,14 @@ const SellYourCarScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
   },
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -572,7 +590,7 @@ const styles = StyleSheet.create({
   },
   imageUploadArea: {
     borderWidth: 2,
-    borderColor: '#2563eb',
+    borderColor: '#900C3F',
     borderStyle: 'dashed',
     borderRadius: 12,
     height: 120,
@@ -594,14 +612,14 @@ const styles = StyleSheet.create({
   },
   plusIcon: {
     fontSize: 16,
-    color: '#2563eb',
+    color: '#900C3F',
     fontWeight: 'bold',
     position: 'absolute',
     top: 8,
     right: -8,
   },
   addPhotoText: {
-    color: '#2563eb',
+    color: '#900C3F',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -653,6 +671,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#222',
     padding: 0,
+    textAlign: 'left',
+    writingDirection: 'ltr',
   },
   descriptionInput: {
     fontSize: 14,
@@ -660,6 +680,8 @@ const styles = StyleSheet.create({
     padding: 0,
     minHeight: 60,
     textAlignVertical: 'top',
+    textAlign: 'left',
+    writingDirection: 'ltr',
   },
   chevronIcon: {
     fontSize: 18,
@@ -682,7 +704,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   suggestionTagSelected: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#900C3F',
   },
   suggestionTagText: {
     fontSize: 12,

@@ -1,11 +1,18 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ScrollView, Platform, Animated } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ScrollView, Platform, Animated, I18nManager } from 'react-native';
 import { isUserLoggedIn, getAuthPromptMessage } from './auth/AuthUtils';
 import InfoModal from '../modals/InfoModal';
+import SellerInfoModal from '../modals/SellerInfoModal';
+import ContactSellerModal from '../modals/ContactSellerModal';
+import AuthModal from '../modals/AuthModal';
+import BiddingModal from '../modals/BiddingModal';
+import { Header } from '../components';
+import { getCarData, addCarUpdateListener, addCarToManager } from '../utils/CarDataManager';
 
 const CarDetailScreen = ({ navigation, route }) => {
   // Use car data from route params if available, otherwise use placeholder data
-  const car = route.params?.car || {
+  const initialCar = route.params?.car || {
+    id: 'default-car',
     title: 'Suzuki Alto VXL AGS',
     price: 'PKR 2,800,000',
     location: 'Nazimabad, Karachi',
@@ -18,46 +25,73 @@ const CarDetailScreen = ({ navigation, route }) => {
     managedText: 'The sale of this car is managed by Pakwheels to provide you with the best deal.',
   };
 
+  const [car, setCar] = useState(initialCar);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [infoTitle, setInfoTitle] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
   const [infoIcon, setInfoIcon] = useState('ℹ️');
+  const [sellerInfoModalVisible, setSellerInfoModalVisible] = useState(false);
+  const [contactSellerModalVisible, setContactSellerModalVisible] = useState(false);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [biddingModalVisible, setBiddingModalVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Add car to global manager and listen for updates
+  useEffect(() => {
+    if (car.id) {
+      addCarToManager(car.id, car);
+      
+      // Listen for updates to this car
+      const unsubscribe = addCarUpdateListener(car.id, (updatedCar) => {
+        setCar(updatedCar);
+      });
+      
+      return unsubscribe;
+    }
+  }, [car.id]);
 
   const handleContactAction = (action) => {
     if (!isUserLoggedIn()) {
-      // This will be handled by the AuthModal system
+      setAuthModalVisible(true);
       return;
     }
 
-    // Handle the actual contact action
+    // Show seller info modal for call action
+    if (action === 'call') {
+      setSellerInfoModalVisible(true);
+      return;
+    }
+
+    // Show contact seller modal for other actions
+    setContactSellerModalVisible(true);
+  };
+
+  const handleSellerAction = (action, phone) => {
     switch (action) {
       case 'call':
-        setInfoTitle('Call Seller');
-        setInfoMessage('Calling seller...');
+        setInfoTitle('Calling Seller');
+        setInfoMessage(`Calling ${phone}...`);
         setInfoIcon('📞');
         setInfoModalVisible(true);
         break;
       case 'sms':
         setInfoTitle('SMS');
-        setInfoMessage('Sending SMS...');
+        setInfoMessage(`Sending SMS to ${phone}...`);
         setInfoIcon('💬');
         setInfoModalVisible(true);
         break;
       case 'chat':
         setInfoTitle('Chat');
-        setInfoMessage('Opening chat...');
+        setInfoMessage('Opening chat with seller...');
         setInfoIcon('💭');
         setInfoModalVisible(true);
         break;
       case 'whatsapp':
         setInfoTitle('WhatsApp');
-        setInfoMessage('Opening WhatsApp...');
+        setInfoMessage(`Opening WhatsApp chat with ${phone}...`);
         setInfoIcon('📱');
         setInfoModalVisible(true);
-        break;
-      default:
         break;
     }
   };
@@ -74,7 +108,7 @@ const CarDetailScreen = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
       {/* Sticky Header */}
       {showStickyHeader && (
         <View style={styles.stickyHeader}>
@@ -92,10 +126,10 @@ const CarDetailScreen = ({ navigation, route }) => {
           </View>
         </View>
       )}
-      <View style={styles.container}>
+      <View style={[styles.container, { direction: 'ltr' }]}>
         <Animated.ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          style={{ flex: 1, direction: 'ltr' }}
+          contentContainerStyle={{ paddingBottom: 120, direction: 'ltr' }}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={16}
           onScroll={handleScroll}
@@ -124,6 +158,18 @@ const CarDetailScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
             <View style={styles.imageCount}><Text style={styles.imageCountText}>1/14</Text></View>
+            
+            {car.biddingEnabled && (
+              <View style={styles.mainBiddingBadge}>
+                <Text style={styles.mainBiddingIcon}>🏷️</Text>
+                <Text style={styles.mainBiddingText}>LIVE BIDDING</Text>
+                {car.biddingEndTime > Date.now() && (
+                  <Text style={styles.mainBiddingTimer}>
+                    {Math.floor((car.biddingEndTime - Date.now()) / (1000 * 60 * 60 * 24))}d {Math.floor(((car.biddingEndTime - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))}h
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
           {/* Badges Row */}
           <View style={styles.badgesRow}>
@@ -327,8 +373,8 @@ const CarDetailScreen = ({ navigation, route }) => {
               <Text style={styles.sectionTitle}>Similar Ads</Text>
               <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.cardRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+              <View style={[styles.cardRow, { direction: 'ltr' }]}>
                 <TouchableOpacity 
                   style={styles.carCard}
                   onPress={() => navigation.navigate('CarDetailScreen', { 
@@ -384,8 +430,8 @@ const CarDetailScreen = ({ navigation, route }) => {
               <Text style={styles.sectionTitle}>Parts of this car</Text>
               <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.cardRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+              <View style={[styles.cardRow, { direction: 'ltr' }]}>
                 <TouchableOpacity style={styles.carCard}>
                   <Image source={require('../assets/images/sonata.jpeg')} style={styles.carImage} resizeMode="contain" />
                   <Text style={styles.carCardTitle}>Hyundai Sonata 2021</Text>
@@ -404,6 +450,70 @@ const CarDetailScreen = ({ navigation, route }) => {
             </ScrollView>
           </View>
         </Animated.ScrollView>
+        
+        {/* Bidding Section */}
+        {car.biddingEnabled && (
+          <View style={styles.biddingSection}>
+            <View style={styles.biddingHeader}>
+              <View style={styles.biddingTitleRow}>
+                <Text style={styles.biddingIcon}>🏷️</Text>
+                <Text style={styles.biddingTitle}>Live Bidding</Text>
+                <View style={styles.biddingStatusBadge}>
+                  <Text style={styles.biddingStatusText}>ACTIVE</Text>
+                </View>
+              </View>
+              <View style={styles.biddingTimerContainer}>
+                <Text style={styles.biddingTimerLabel}>Time Remaining:</Text>
+                <Text style={styles.biddingTimer}>
+                  {car.biddingEndTime > Date.now() ? 
+                    `${Math.floor((car.biddingEndTime - Date.now()) / (1000 * 60 * 60 * 24))}d ${Math.floor(((car.biddingEndTime - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))}h ${Math.floor(((car.biddingEndTime - Date.now()) % (1000 * 60 * 60)) / (1000 * 60))}m` : 
+                    'Auction ended'
+                  }
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.biddingStatsRow}>
+              <View style={styles.biddingStat}>
+                <Text style={styles.biddingStatLabel}>Current Bid</Text>
+                <Text style={styles.biddingStatValue}>
+                  PKR {car.currentBid?.toLocaleString() || '0'}
+                </Text>
+              </View>
+              <View style={styles.biddingStat}>
+                <Text style={styles.biddingStatLabel}>Total Bids</Text>
+                <Text style={styles.biddingStatValue}>
+                  {car.bids?.length || 0}
+                </Text>
+              </View>
+              {car.highestBidder && (
+                <View style={styles.biddingStat}>
+                  <Text style={styles.biddingStatLabel}>Top Bidder</Text>
+                  <Text style={styles.biddingStatValue}>
+                    {car.highestBidder}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            {car.biddingEndTime > Date.now() && (
+              <TouchableOpacity 
+                style={styles.bidButton}
+                onPress={() => {
+                  if (!isUserLoggedIn()) {
+                    setAuthModalVisible(true);
+                    return;
+                  }
+                  setBiddingModalVisible(true);
+                }}
+              >
+                <Text style={styles.bidButtonIcon}>🏷️</Text>
+                <Text style={styles.bidButtonText}>Place Your Bid</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        
         {/* Bottom Bar */}
         <View style={styles.bottomBar}>
           <TouchableOpacity 
@@ -446,6 +556,62 @@ const CarDetailScreen = ({ navigation, route }) => {
         message={infoMessage}
         icon={infoIcon}
       />
+
+      {/* Seller Info Modal */}
+      <SellerInfoModal
+        visible={sellerInfoModalVisible}
+        onClose={() => setSellerInfoModalVisible(false)}
+        onCall={(phone) => handleSellerAction('call', phone)}
+        onSMS={(phone) => handleSellerAction('sms', phone)}
+        onChat={(sellerInfo) => handleSellerAction('chat', sellerInfo.phone)}
+        onWhatsApp={(phone) => handleSellerAction('whatsapp', phone)}
+      />
+
+      {/* Contact Seller Modal */}
+      <ContactSellerModal
+        visible={contactSellerModalVisible}
+        onClose={() => setContactSellerModalVisible(false)}
+        onCall={(phone) => handleSellerAction('call', phone)}
+        onSMS={(phone) => handleSellerAction('sms', phone)}
+        onChat={(sellerInfo) => handleSellerAction('chat', sellerInfo.phone)}
+        onWhatsApp={(phone) => handleSellerAction('whatsapp', phone)}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onSignIn={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignInScreen', {
+            returnScreen: 'CarDetailScreen',
+            returnParams: route.params,
+            action: 'contact_seller'
+          });
+        }}
+        onSignUp={() => {
+          setAuthModalVisible(false);
+          navigation.navigate('SignUpScreen', {
+            returnScreen: 'CarDetailScreen',
+            returnParams: route.params,
+            action: 'contact_seller'
+          });
+        }}
+        action="contact_seller"
+        navigation={navigation}
+      />
+
+      {/* Bidding Modal */}
+      <BiddingModal
+        visible={biddingModalVisible}
+        onClose={() => setBiddingModalVisible(false)}
+        car={car}
+        onBidPlaced={(updatedCar) => {
+          // Update the car data with new bidding information
+          // Object.assign(car, updatedCar); // This line is removed as per the new_code
+        }}
+        currentUser={global.userSession?.user}
+      />
     </SafeAreaView>
   );
 };
@@ -453,10 +619,10 @@ const CarDetailScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     paddingBottom: Platform.OS === 'android' ? 40 : 0, // match Home.js bottom safe area
   },
-  container: { flex: 1, backgroundColor: '#f9fafd' },
+  container: { flex: 1, backgroundColor: '#f9fafd', direction: 'ltr' },
   imageHeaderWrapper: {
     position: 'relative',
     backgroundColor: '#222',
@@ -569,7 +735,7 @@ const styles = StyleSheet.create({
   },
   iconText: {
     fontSize: 20,
-    color: '#193A7A',
+    color: '#900C3F',
   },
   shareIcon: {
     width: 22,
@@ -590,6 +756,42 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 15,
+  },
+  mainBiddingBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: '#fef3c7',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+    borderWidth: 2,
+    borderColor: '#fde68a',
+    elevation: 4,
+    shadowColor: '#d97706',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    maxWidth: 140,
+  },
+  mainBiddingIcon: {
+    fontSize: 14,
+    marginRight: 4,
+  },
+  mainBiddingText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#d97706',
+    textTransform: 'uppercase',
+    marginRight: 4,
+  },
+  mainBiddingTimer: {
+    fontSize: 9,
+    color: '#d97706',
+    fontWeight: '600',
   },
   badgesRow: {
     flexDirection: 'row',
@@ -675,7 +877,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   managedLink: {
-    color: '#1275D7',
+    color: '#900C3F',
     fontSize: 15,
     fontWeight: '500',
     marginTop: 2,
@@ -694,8 +896,117 @@ const styles = StyleSheet.create({
     elevation: 10,
     zIndex: 20,
   },
+  biddingSection: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 120,
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 2,
+    borderTopColor: '#d97706',
+    zIndex: 19,
+    elevation: 8,
+    shadowColor: '#d97706',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -4 },
+  },
+  biddingHeader: {
+    marginBottom: 16,
+  },
+  biddingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  biddingIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  biddingTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#d97706',
+    flex: 1,
+  },
+  biddingStatusBadge: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  biddingStatusText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  biddingTimerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  biddingTimerLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  biddingTimer: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#d97706',
+  },
+  biddingStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    backgroundColor: '#fef3c7',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  biddingStat: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  biddingStatLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  biddingStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#d97706',
+  },
+  bidButton: {
+    backgroundColor: '#d97706',
+    borderRadius: 12,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#d97706',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  bidButtonIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  bidButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   callSellerBtn: {
-    backgroundColor: '#1275D7',
+    backgroundColor: '#900C3F',
     borderRadius: 8,
     paddingVertical: 12,
     marginBottom: 8,
@@ -721,7 +1032,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   bottomActionText: {
-    color: '#1275D7',
+    color: '#900C3F',
     fontWeight: '600',
     fontSize: 16,
   },
@@ -743,7 +1054,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: Platform.OS === 'ios' ? 110 : 80,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 100,
@@ -809,11 +1120,11 @@ const styles = StyleSheet.create({
   },
   inspectionScoreShield: {
     fontSize: 16,
-    color: '#1275D7',
+    color: '#900C3F',
     marginRight: 4,
   },
   inspectionScoreValue: {
-    color: '#1275D7',
+    color: '#900C3F',
     fontWeight: '700',
     fontSize: 16,
   },
@@ -1454,6 +1765,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     marginBottom: 6,
+    direction: 'ltr',
   },
   viewAll: {
     color: '#2563eb',
@@ -1465,6 +1777,7 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
     paddingRight: 8,
     marginBottom: 10,
+    direction: 'ltr',
   },
   carCard: {
     width: 210,

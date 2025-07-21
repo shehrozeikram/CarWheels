@@ -9,9 +9,19 @@ import {
   Dimensions,
 } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-const SuccessModal = ({ visible, onClose, title = 'Welcome Back!', message, action = 'continue' }) => {
+const SuccessModal = ({ 
+  visible, 
+  onClose, 
+  title = 'Success!', 
+  message = 'Operation completed successfully.',
+  icon = '✅',
+  action = 'continue',
+  actionText = 'Continue',
+  showCancel = false,
+  cancelText = 'Cancel'
+}) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const checkmarkAnim = useRef(new Animated.Value(0)).current;
@@ -19,33 +29,29 @@ const SuccessModal = ({ visible, onClose, title = 'Welcome Back!', message, acti
   useEffect(() => {
     if (visible) {
       // Start animations
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(opacityAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.timing(checkmarkAnim, {
+      Animated.parallel([
+        Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 600,
-          useNativeDriver: false,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
         }),
       ]).start();
 
-      // Auto close after 3 seconds
-      const timer = setTimeout(() => {
-        onClose();
-      }, 3000);
-
-      return () => clearTimeout(timer);
+      // Animate checkmark with delay
+      setTimeout(() => {
+        Animated.spring(checkmarkAnim, {
+          toValue: 1,
+          tension: 200,
+          friction: 6,
+          useNativeDriver: true,
+        }).start();
+      }, 200);
     } else {
       // Reset animations
       scaleAnim.setValue(0);
@@ -54,33 +60,22 @@ const SuccessModal = ({ visible, onClose, title = 'Welcome Back!', message, acti
     }
   }, [visible]);
 
-  const getActionMessage = () => {
-    switch (action) {
-      case 'sell':
-        return 'You can now sell your car!';
-      case 'contact_seller':
-        return 'You can now contact sellers!';
-      case 'create_ad':
-        return 'You can now create ads!';
-      case 'manage_ads':
-        return 'You can now manage your ads!';
-      default:
-        return 'You can now access all features!';
-    }
-  };
-
   const getActionButtonText = () => {
     switch (action) {
-      case 'sell':
-        return 'Start Selling';
-      case 'contact_seller':
-        return 'Browse Cars';
-      case 'create_ad':
-        return 'Create Ad';
-      case 'manage_ads':
-        return 'View My Ads';
-      default:
+      case 'continue':
         return 'Continue';
+      case 'ok':
+        return 'OK';
+      case 'done':
+        return 'Done';
+      case 'close':
+        return 'Close';
+      case 'view':
+        return 'View';
+      case 'retry':
+        return 'Try Again';
+      default:
+        return actionText || 'Continue';
     }
   };
 
@@ -97,6 +92,11 @@ const SuccessModal = ({ visible, onClose, title = 'Welcome Back!', message, acti
           { opacity: opacityAnim }
         ]}
       >
+        <TouchableOpacity 
+          style={styles.overlayTouchable}
+          activeOpacity={1}
+          onPress={showCancel ? onClose : undefined}
+        />
         <Animated.View 
           style={[
             styles.modalContainer,
@@ -108,54 +108,45 @@ const SuccessModal = ({ visible, onClose, title = 'Welcome Back!', message, acti
         >
           {/* Success Icon */}
           <View style={styles.iconContainer}>
-            <View style={styles.iconCircle}>
-              <Animated.View
-                style={[
-                  styles.checkmarkContainer,
-                  {
-                    transform: [
-                      {
-                        scale: checkmarkAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 1],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Text style={styles.checkmark}>✓</Text>
-              </Animated.View>
-            </View>
+            <Animated.View 
+              style={[
+                styles.iconCircle,
+                {
+                  transform: [{ scale: checkmarkAnim }],
+                }
+              ]}
+            >
+              <Text style={styles.iconText}>{icon}</Text>
+            </Animated.View>
           </View>
 
           {/* Content */}
           <View style={styles.content}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.message}>
-              {message || getActionMessage()}
+              {message}
             </Text>
           </View>
 
-          {/* Action Button */}
+          {/* Action Buttons */}
           <View style={styles.buttonContainer}>
+            {showCancel && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.cancelButton]}
+                onPress={onClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelButtonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, styles.primaryButton]}
               onPress={onClose}
               activeOpacity={0.8}
             >
-              <Text style={styles.actionButtonText}>{getActionButtonText()}</Text>
+              <Text style={styles.primaryButtonText}>{getActionButtonText()}</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Close Button */}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-            activeOpacity={0.6}
-          >
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -169,6 +160,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+  },
+  overlayTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalContainer: {
     backgroundColor: '#fff',
@@ -191,20 +189,14 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#dcfce7',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#10b981',
+    borderColor: '#16a34a',
   },
-  checkmarkContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmark: {
+  iconText: {
     fontSize: 40,
-    color: '#10b981',
-    fontWeight: 'bold',
   },
   content: {
     alignItems: 'center',
@@ -226,33 +218,38 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: '100%',
-    marginBottom: 16,
+    flexDirection: 'row',
+    gap: 12,
   },
   actionButton: {
-    backgroundColor: '#193A7A',
+    flex: 1,
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: 'center',
     elevation: 4,
-    shadowColor: '#193A7A',
+  },
+  primaryButton: {
+    backgroundColor: '#16a34a',
+    shadowColor: '#16a34a',
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  actionButtonText: {
+  primaryButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
   },
-  closeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  cancelButton: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
-  closeButtonText: {
-    color: '#9ca3af',
-    fontSize: 16,
-    fontWeight: '500',
+  cancelButtonText: {
+    color: '#6b7280',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 

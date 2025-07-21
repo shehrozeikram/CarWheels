@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform, Image, Modal, I18nManager } from 'react-native';
 import SellModal from '../modals/SellModal';
 import AuthModal from '../modals/AuthModal';
 import SuccessModal from '../modals/SuccessModal';
 import InfoModal from '../modals/InfoModal';
-import { isUserLoggedIn } from './auth/AuthUtils';
+import { isUserLoggedIn, getCurrentUser } from './auth/AuthUtils';
+import { addCarToManager, updateCarData } from '../utils/CarDataManager';
 
 const AdsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Active');
@@ -18,10 +19,12 @@ const AdsScreen = ({ navigation }) => {
   const [infoTitle, setInfoTitle] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
 
-  // Current user info (in a real app, this would come from authentication)
-  const currentUser = {
-    name: 'Shehroze Ikram',
-    mobile: '03214554035'
+  // Get current user info from global session
+  const getCurrentUserInfo = () => {
+    return getCurrentUser() || {
+      name: 'Shehroze Ikram',
+      mobile: '03214554035'
+    };
   };
 
   // Promotion options data
@@ -57,9 +60,19 @@ const AdsScreen = ({ navigation }) => {
       textColor: '#16a34a'
     },
     {
+      id: 'bidding',
+      title: 'Enable Bidding',
+      price: 300,
+      icon: '🏷️',
+      description: 'Allow users to bid on your vehicle with automatic timer',
+      benefits: ['Competitive pricing', 'Quick sale', 'Real-time updates'],
+      color: '#fef3c7',
+      textColor: '#d97706'
+    },
+    {
       id: 'all',
       title: 'Complete Package',
-      price: 2500,
+      price: 2800,
       icon: '🚀',
       description: 'All features combined for maximum visibility and trust',
       benefits: ['All features included', 'Best value', 'Maximum exposure'],
@@ -71,20 +84,50 @@ const AdsScreen = ({ navigation }) => {
   // Get all ads created by the current user
   const getUserAds = () => {
     const allAds = [];
+    const currentUser = getCurrentUserInfo();
+    
+    console.log('Current user:', currentUser);
+    console.log('Global car listings:', global.carListings);
     
     // Check global car listings for user-created ads
     if (global.carListings) {
       Object.keys(global.carListings).forEach(category => {
         const categoryAds = global.carListings[category];
-        const userCategoryAds = categoryAds.filter(ad => 
-          ad.isUserCreated && 
-          ad.formData?.contactInfo?.name === currentUser.name &&
-          ad.formData?.contactInfo?.mobile === currentUser.mobile
-        );
-        allAds.push(...userCategoryAds);
+        console.log(`Category ${category} has ${categoryAds.length} ads`);
+        
+        const userCategoryAds = categoryAds.filter(ad => {
+          const isUserCreated = ad.isUserCreated;
+          const nameMatch = ad.formData?.contactInfo?.name === currentUser.name;
+          const mobileMatch = ad.formData?.contactInfo?.mobile === currentUser.mobile;
+          
+          console.log(`Ad ${ad.id}: isUserCreated=${isUserCreated}, nameMatch=${nameMatch}, mobileMatch=${mobileMatch}`);
+          console.log(`Ad contact info:`, ad.formData?.contactInfo);
+          
+          return isUserCreated && nameMatch && mobileMatch;
+        });
+        
+        // Get the latest bidding data from global car data manager
+        const updatedUserAds = userCategoryAds.map(ad => {
+          if (global.carDataManager && global.carDataManager.cars && global.carDataManager.cars[ad.id]) {
+            const updatedAd = global.carDataManager.cars[ad.id];
+            return {
+              ...ad,
+              currentBid: updatedAd.currentBid,
+              highestBidder: updatedAd.highestBidder,
+              bids: updatedAd.bids,
+              biddingEnabled: updatedAd.biddingEnabled,
+              biddingEndTime: updatedAd.biddingEndTime
+            };
+          }
+          return ad;
+        });
+        
+        console.log(`Found ${updatedUserAds.length} user ads in category ${category}`);
+        allAds.push(...updatedUserAds);
       });
     }
     
+    console.log(`Total user ads found: ${allAds.length}`);
     return allAds;
   };
 
@@ -159,6 +202,10 @@ const AdsScreen = ({ navigation }) => {
       case 'remove':
         // Mark ad as removed
         ad.status = 'removed';
+        // Update in global car data manager
+        if (ad.id) {
+          updateCarData(ad.id, { status: 'removed' });
+        }
         setUserAds(getFilteredAds());
         setSuccessModalVisible(true);
         break;
@@ -179,22 +226,47 @@ const AdsScreen = ({ navigation }) => {
   const applyPromotion = (promotionType) => {
     if (!selectedAd) return;
 
+    // Prepare updates object
+    const updates = {};
+
     // Apply the promotion
     switch (promotionType) {
       case 'featured':
-        selectedAd.isFeatured = true;
+        updates.isFeatured = true;
         break;
       case 'managed':
-        selectedAd.managed = true;
+        updates.managed = true;
         break;
       case 'inspected':
-        selectedAd.inspected = '9.2'; // Random inspection score
+        updates.inspected = '9.2'; // Random inspection score
+        break;
+      case 'bidding':
+        updates.biddingEnabled = true;
+        updates.biddingStartTime = Date.now();
+        updates.biddingEndTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days from now
+        updates.currentBid = parseFloat(selectedAd.price.replace(/[^\d.]/g, '')) * 0.8; // 80% of asking price as starting bid
+        updates.bids = [];
+        updates.highestBidder = null;
         break;
       case 'all':
-        selectedAd.isFeatured = true;
-        selectedAd.managed = true;
-        selectedAd.inspected = '9.2';
+        updates.isFeatured = true;
+        updates.managed = true;
+        updates.inspected = '9.2';
+        updates.biddingEnabled = true;
+        updates.biddingStartTime = Date.now();
+        updates.biddingEndTime = Date.now() + (7 * 24 * 60 * 60 * 1000);
+        updates.currentBid = parseFloat(selectedAd.price.replace(/[^\d.]/g, '')) * 0.8;
+        updates.bids = [];
+        updates.highestBidder = null;
         break;
+    }
+    
+    // Update the ad locally
+    Object.assign(selectedAd, updates);
+    
+    // Update in global car data manager
+    if (selectedAd.id) {
+      updateCarData(selectedAd.id, updates);
     }
     
     setUserAds(getFilteredAds());
@@ -292,7 +364,7 @@ const AdsScreen = ({ navigation }) => {
   );
 
   const renderAdCard = (ad) => (
-    <View key={ad.id} style={styles.adCard}>
+    <View key={`${ad.id}-${ad.currentBid}-${ad.bids?.length || 0}`} style={styles.adCard}>
       <TouchableOpacity 
         style={styles.adCardContent}
         onPress={() => handleAdAction(ad, 'view')}
@@ -343,7 +415,36 @@ const AdsScreen = ({ navigation }) => {
                 <Text style={styles.promotionText}>Inspected {ad.inspected}/10</Text>
               </View>
             )}
+            {ad.biddingEnabled && (
+              <View style={styles.biddingBadge}>
+                <Text style={styles.biddingIcon}>🏷️</Text>
+                <Text style={styles.biddingText}>Bidding Active</Text>
+                <Text style={styles.biddingTimer}>
+                  {ad.biddingEndTime > Date.now() ? 
+                    `${Math.floor((ad.biddingEndTime - Date.now()) / (1000 * 60 * 60 * 24))}d ${Math.floor(((ad.biddingEndTime - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))}h left` : 
+                    'Ended'
+                  }
+                </Text>
+              </View>
+            )}
           </View>
+          
+          {/* Bidding Information */}
+          {ad.biddingEnabled && (
+            <View style={styles.biddingInfo}>
+              <Text style={styles.biddingCurrentBid}>
+                Current Bid: PKR {ad.currentBid?.toLocaleString() || '0'}
+              </Text>
+              {ad.highestBidder && (
+                <Text style={styles.biddingBidder}>
+                  Highest Bidder: {ad.highestBidder}
+                </Text>
+              )}
+              <Text style={styles.biddingCount}>
+                {ad.bids?.length || 0} bids placed
+              </Text>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
       
@@ -423,10 +524,10 @@ const AdsScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
+      <View style={[styles.container, { direction: 'ltr' }]}>
         {/* iOS blue status bar area */}
-        {Platform.OS === 'ios' && <SafeAreaView style={{ backgroundColor: '#193A7A' }} />}
+        {Platform.OS === 'ios' && <SafeAreaView style={{ backgroundColor: '#900C3F' }} />}
         
         {/* Header */}
         <View style={styles.header}>
@@ -464,7 +565,7 @@ const AdsScreen = ({ navigation }) => {
         {/* Promotional Features Section */}
         <View style={styles.promotionSection}>
           <Text style={styles.promotionTitle}>Boost Your Ad Visibility</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promotionScroll}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promotionScroll} contentContainerStyle={{ direction: 'ltr' }}>
             <View style={styles.promotionCard}>
               <Text style={styles.promotionCardIcon}>⭐</Text>
               <Text style={styles.promotionCardTitle}>Featured Badge</Text>
@@ -527,11 +628,19 @@ const AdsScreen = ({ navigation }) => {
         onClose={() => setAuthModalVisible(false)}
         onSignIn={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignInScreen');
+          navigation.navigate('SignInScreen', {
+            returnScreen: 'AdsScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         onSignUp={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen');
+          navigation.navigate('SignUpScreen', {
+            returnScreen: 'AdsScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         action="sell"
         navigation={navigation}
@@ -562,10 +671,10 @@ const AdsScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#193A7A', paddingBottom: 40 },
-  container: { flex: 1, backgroundColor: '#fff' },
+  safeArea: { flex: 1, backgroundColor: '#900C3F', paddingBottom: 40, direction: 'ltr' },
+  container: { flex: 1, backgroundColor: '#fff', direction: 'ltr' },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     paddingTop: Platform.OS === 'ios' ? 10 : 36,
     paddingBottom: 16,
     alignItems: 'center',
@@ -581,6 +690,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    direction: 'ltr',
   },
   tab: {
     flex: 1,
@@ -626,6 +736,7 @@ const styles = StyleSheet.create({
   adCardContent: {
     flexDirection: 'row',
     padding: 16,
+    direction: 'ltr',
   },
   adImage: {
     width: 80,
@@ -641,6 +752,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+    direction: 'ltr',
   },
   adTitle: {
     fontSize: 16,
@@ -682,7 +794,7 @@ const styles = StyleSheet.create({
   adPrice: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#193A7A',
+    color: '#900C3F',
     marginBottom: 4,
   },
   adDetails: {
@@ -697,6 +809,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    direction: 'ltr',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -719,6 +832,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 8,
     alignItems: 'center',
+    direction: 'ltr',
   },
   promotionBadge: {
     flexDirection: 'row',
@@ -736,12 +850,57 @@ const styles = StyleSheet.create({
   promotionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#193A7A',
+    color: '#900C3F',
   },
   certifiedIcon: {
     width: 16,
     height: 16,
     marginRight: 4,
+  },
+  biddingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  biddingIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  biddingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#d97706',
+    marginRight: 4,
+  },
+  biddingTimer: {
+    fontSize: 10,
+    color: '#d97706',
+    fontWeight: '500',
+  },
+  biddingInfo: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+  },
+  biddingCurrentBid: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#d97706',
+    marginBottom: 2,
+  },
+  biddingBidder: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  biddingCount: {
+    fontSize: 12,
+    color: '#666',
   },
   promotionSection: {
     backgroundColor: '#f8f9fa',
@@ -789,7 +948,7 @@ const styles = StyleSheet.create({
   promotionCardPrice: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#193A7A',
+    color: '#900C3F',
     marginBottom: 4,
   },
   promotionCardDesc: {
@@ -812,7 +971,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2563eb',
+    color: '#900C3F',
   },
   removeButton: {
     borderRightWidth: 0, // Remove right border for last button
@@ -872,7 +1031,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, 
     borderTopColor: '#eee', 
     zIndex: 10, 
-    elevation: 10 
+    elevation: 10,
+    direction: 'ltr'
   },
   bottomNavItem: { 
     alignItems: 'center', 
@@ -888,20 +1048,20 @@ const styles = StyleSheet.create({
   },
   bottomNavLabelActive: { 
     fontSize: 12, 
-    color: '#2563eb', 
+    color: '#900C3F', 
     fontWeight: '700' 
   },
   sellNowButton: { 
     width: 62, 
     height: 62, 
     borderRadius: 31, 
-    backgroundColor: '#2563eb', 
+    backgroundColor: '#900C3F', 
     alignItems: 'center', 
     justifyContent: 'center', 
     marginBottom: 30, 
     zIndex: 20, 
     elevation: 6, 
-    shadowColor: '#2563eb', 
+    shadowColor: '#900C3F', 
     shadowOpacity: 0.18, 
     shadowRadius: 8, 
     shadowOffset: { width: 0, height: 2 } 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, ScrollView, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, ScrollView, Platform, StatusBar, Image } from 'react-native';
 
 const LocationModal = ({ visible, onClose, onSelectLocation }) => {
   const [selectedCity, setSelectedCity] = useState(null);

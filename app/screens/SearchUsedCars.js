@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, SafeAreaView, Image, I18nManager } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const popularCars = [
@@ -32,8 +32,8 @@ const SearchUsedCars = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
+      <View style={[styles.container, { direction: 'ltr' }]}>
         {/* Blue Top Bar for Safe Area, matching Home.js */}
         <View style={styles.topBlueBar} />
         {/* Search Bar with Back Arrow */}
@@ -48,6 +48,9 @@ const SearchUsedCars = ({ navigation }) => {
             value={searchText}
             onChangeText={handleSearch}
             autoFocus
+            textAlign="left"
+            textAlignVertical="center"
+            writingDirection="ltr"
           />
         </View>
 
@@ -60,8 +63,8 @@ const SearchUsedCars = ({ navigation }) => {
 
         {/* Popular Used Cars */}
         <ScrollView 
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.scrollContent} 
+          style={{ flex: 1, direction: 'ltr' }}
+          contentContainerStyle={[styles.scrollContent, { direction: 'ltr' }]} 
           showsVerticalScrollIndicator={true}
         >
           <Text style={[
@@ -91,10 +94,10 @@ const SearchUsedCars = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#193A7A' },
-  container: { flex: 1, backgroundColor: '#f9fafd' },
+  safeArea: { flex: 1, backgroundColor: '#900C3F', direction: 'ltr' },
+  container: { flex: 1, backgroundColor: '#f9fafd', direction: 'ltr' },
   topBlueBar: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     height: Platform.OS === 'android' ? 36 : 0, // mimic Home.js safe area blue
     width: '100%',
   },
@@ -112,6 +115,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
+    direction: 'ltr',
   },
   backButton: {
     paddingRight: 8,
@@ -129,6 +133,8 @@ const styles = StyleSheet.create({
     color: '#222',
     backgroundColor: 'transparent',
     paddingLeft: 4,
+    textAlign: 'left',
+    writingDirection: 'ltr',
   },
   advancedSearchWrapper: {
     alignItems: 'center',
@@ -137,7 +143,7 @@ const styles = StyleSheet.create({
     marginBottom: 18, // keep as is for balance
 },
   advancedSearchText: {
-    color: '#1275D7',
+    color: '#900C3F',
     fontSize: 17,
     fontWeight: '400',
     textAlign: 'center',
@@ -173,7 +179,7 @@ const styles = StyleSheet.create({
   },
   unicodeBackArrow: {
     fontSize: 32,
-    color: '#193A7A',
+    color: '#900C3F',
     fontWeight: 'bold',
     marginLeft: 2,
   },

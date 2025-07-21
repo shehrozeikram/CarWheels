@@ -1,8 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, Platform, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView, Platform } from 'react-native';
 import { isUserLoggedIn, getAuthPromptMessage } from '../screens/auth/AuthUtils';
+import AuthModal from './AuthModal';
 
 const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  
   const sellOptions = [
     { id: 'car', label: 'Car', icon: '🚗' },
     { id: 'bike', label: 'Bike', icon: '🏍️' },
@@ -37,24 +40,7 @@ const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
                     
                     // Check if user is logged in
                     if (!isUserLoggedIn()) {
-                      Alert.alert(
-                        'Authentication Required',
-                        getAuthPromptMessage('sell'),
-                        [
-                          {
-                            text: 'Cancel',
-                            style: 'cancel',
-                          },
-                          {
-                            text: 'Sign In',
-                            onPress: () => navigation.navigate('SignInScreen'),
-                          },
-                          {
-                            text: 'Sign Up',
-                            onPress: () => navigation.navigate('SignUpScreen'),
-                          },
-                        ]
-                      );
+                      setAuthModalVisible(true);
                       return;
                     }
                     
@@ -86,6 +72,38 @@ const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
           </View>
         </View>
       </View>
+
+      {/* Auth Modal */}
+      <AuthModal
+        visible={authModalVisible}
+        onClose={() => setAuthModalVisible(false)}
+        onSignIn={() => {
+          setAuthModalVisible(false);
+          // Get current screen name from navigation state
+          const currentRoute = navigation.getState()?.routes[navigation.getState().index];
+          const currentScreen = currentRoute?.name || 'Home';
+          
+          navigation.navigate('SignInScreen', {
+            returnScreen: currentScreen,
+            returnParams: currentRoute?.params,
+            action: 'sell'
+          });
+        }}
+        onSignUp={() => {
+          setAuthModalVisible(false);
+          // Get current screen name from navigation state
+          const currentRoute = navigation.getState()?.routes[navigation.getState().index];
+          const currentScreen = currentRoute?.name || 'Home';
+          
+          navigation.navigate('SignUpScreen', {
+            returnScreen: currentScreen,
+            returnParams: currentRoute?.params,
+            action: 'sell'
+          });
+        }}
+        action="sell"
+        navigation={navigation}
+      />
     </Modal>
   );
 };

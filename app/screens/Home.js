@@ -1,11 +1,476 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, SafeAreaView, Image, Linking } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, SafeAreaView, Image, Linking, I18nManager } from 'react-native';
 import { WebView } from 'react-native-webview';
 import {  StatusBar } from 'react-native';
 import 'react-native-gesture-handler';
 import SellModal from '../modals/SellModal';
 import AuthModal from '../modals/AuthModal';
+import SuccessModal from '../modals/SuccessModal';
 import { isUserLoggedIn } from './auth/AuthUtils';
+import { SearchBar, BottomNavigation } from '../components';
+import { getCarsForModel, initializeCarData, addModelUpdateListener } from '../utils/CarDataManager';
+
+const carData = {
+  'Daihatsu Mira': [
+    {
+      id: 1,
+      title: 'Daihatsu Mira X SA III',
+      price: 'PKR 32 lacs',
+      year: '2022',
+      km: '36,281 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/mg.webp'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 14,
+      managed: true,
+      inspected: '9.1',
+    },
+    {
+      id: 2,
+      title: 'Daihatsu Mira X Memorial Edition',
+      price: 'PKR 29.5 lacs',
+      year: '2017',
+      km: '86,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/alto.webp'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 9,
+      managed: false,
+      inspected: null,
+    },
+    {
+      id: 3,
+      title: 'Daihatsu Mira X Limited ER',
+      price: 'PKR 23.26 lacs',
+      year: '2013',
+      km: '152,000 km',
+      city: 'Islamabad',
+      fuel: 'Petrol',
+      image: require('../assets/images/vitz.jpg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 17,
+      managed: false,
+      inspected: null,
+    },
+  ],
+  'Honda City': [
+    {
+      id: 1,
+      title: 'Honda City 2023 VX',
+      price: 'PKR 45 lacs',
+      year: '2023',
+      km: '18,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/civic.jpg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 12,
+      managed: true,
+      inspected: '8.8',
+    },
+    {
+      id: 2,
+      title: 'Honda City 2022 VX',
+      price: 'PKR 42 lacs',
+      year: '2022',
+      km: '32,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/sonata.jpeg'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 15,
+      managed: true,
+      inspected: '9.0',
+    },
+    {
+      id: 3,
+      title: 'Honda City 2021 VX',
+      price: 'PKR 38 lacs',
+      year: '2021',
+      km: '45,000 km',
+      city: 'Islamabad',
+      fuel: 'Petrol',
+      image: require('../assets/images/alto.webp'),
+      isNew: false,
+      isStarred: false,
+      imagesCount: 10,
+      managed: false,
+      inspected: null,
+    },
+  ],
+  'Suzuki Alto': [
+    {
+      id: 1,
+      title: 'Suzuki Alto 2023 VXL',
+      price: 'PKR 28 lacs',
+      year: '2023',
+      km: '8,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/alto.webp'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 12,
+      managed: true,
+      inspected: '8.9',
+      biddingEnabled: true,
+      biddingEndTime: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days from now
+      currentBid: 2500000, // PKR 25 lacs
+      bids: [
+        { id: 1, amount: 2500000, bidder: 'Ahmed Khan', timestamp: Date.now() - 3600000 },
+        { id: 2, amount: 2400000, bidder: 'Fatima Ali', timestamp: Date.now() - 7200000 },
+      ],
+      highestBidder: 'Ahmed Khan',
+    },
+    {
+      id: 2,
+      title: 'Suzuki Alto 2022 VXL',
+      price: 'PKR 25 lacs',
+      year: '2022',
+      km: '25,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/vitz.jpg'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 10,
+      managed: true,
+      inspected: '8.7',
+      biddingEnabled: true,
+      biddingEndTime: Date.now() + (5 * 24 * 60 * 60 * 1000), // 5 days from now
+      currentBid: 2200000, // PKR 22 lacs
+      bids: [
+        { id: 1, amount: 2200000, bidder: 'Muhammad Hassan', timestamp: Date.now() - 1800000 },
+      ],
+      highestBidder: 'Muhammad Hassan',
+    },
+    {
+      id: 3,
+      title: 'Suzuki Alto 2021 VXL',
+      price: 'PKR 22 lacs',
+      year: '2021',
+      km: '38,000 km',
+      city: 'Islamabad',
+      fuel: 'Petrol',
+      image: require('../assets/images/mg.webp'),
+      isNew: false,
+      isStarred: false,
+      imagesCount: 8,
+      managed: false,
+      inspected: null,
+    },
+  ],
+  'Toyota Corolla': [
+    {
+      id: 1,
+      title: 'Toyota Corolla Altis 2023',
+      price: 'PKR 75 lacs',
+      year: '2023',
+      km: '15,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/sonata.jpeg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 16,
+      managed: true,
+      inspected: '9.2',
+    },
+    {
+      id: 2,
+      title: 'Toyota Corolla Altis 2022',
+      price: 'PKR 68 lacs',
+      year: '2022',
+      km: '32,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/civic.jpg'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 14,
+      managed: true,
+      inspected: '9.0',
+    },
+    {
+      id: 3,
+      title: 'Toyota Corolla Altis 2021',
+      price: 'PKR 62 lacs',
+      year: '2021',
+      km: '48,000 km',
+      city: 'Islamabad',
+      fuel: 'Petrol',
+      image: require('../assets/images/alto.webp'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 12,
+      managed: false,
+      inspected: null,
+    },
+  ],
+  'Automatic cars': [
+    {
+      id: 1,
+      title: 'Honda Civic 2023 Automatic',
+      price: 'PKR 85 lacs',
+      year: '2023',
+      km: '12,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/civic.jpg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 18,
+      managed: true,
+      inspected: '9.3',
+    },
+    {
+      id: 2,
+      title: 'Toyota Corolla 2022 Automatic',
+      price: 'PKR 68 lacs',
+      year: '2022',
+      km: '28,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/sonata.jpeg'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 16,
+      managed: true,
+      inspected: '9.1',
+    },
+  ],
+  'Imported cars': [
+    {
+      id: 1,
+      title: 'Toyota Land Cruiser 2020',
+      price: 'PKR 2.5 crore',
+      year: '2020',
+      km: '45,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/mg.webp'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 20,
+      managed: true,
+      inspected: '9.5',
+    },
+    {
+      id: 2,
+      title: 'BMW X5 2021 Imported',
+      price: 'PKR 1.8 crore',
+      year: '2021',
+      km: '32,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/stonic.jpg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 18,
+      managed: true,
+      inspected: '9.3',
+    },
+  ],
+  'Jeep': [
+    {
+      id: 1,
+      title: 'Jeep Wrangler 2022',
+      price: 'PKR 1.5 crore',
+      year: '2022',
+      km: '25,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/sonata.jpeg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 16,
+      managed: true,
+      inspected: '9.0',
+    },
+    {
+      id: 2,
+      title: 'Jeep Cherokee 2021',
+      price: 'PKR 95 lacs',
+      year: '2021',
+      km: '38,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/civic.jpg'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 12,
+      managed: true,
+      inspected: '8.7',
+    },
+  ],
+  'Hybrid cars': [
+    {
+      id: 1,
+      title: 'Toyota Prius 2023 Hybrid',
+      price: 'PKR 1.1 crore',
+      year: '2023',
+      km: '12,000 km',
+      city: 'Karachi',
+      fuel: 'Hybrid',
+      image: require('../assets/images/mg.webp'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 15,
+      managed: true,
+      inspected: '9.4',
+    },
+    {
+      id: 2,
+      title: 'Honda Insight 2022',
+      price: 'PKR 85 lacs',
+      year: '2022',
+      km: '28,000 km',
+      city: 'Lahore',
+      fuel: 'Hybrid',
+      image: require('../assets/images/stonic.jpg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 13,
+      managed: true,
+      inspected: '9.1',
+    },
+  ],
+  'Diesel cars': [
+    {
+      id: 1,
+      title: 'Toyota Hilux 2023 Diesel',
+      price: 'PKR 1.8 crore',
+      year: '2023',
+      km: '18,000 km',
+      city: 'Karachi',
+      fuel: 'Diesel',
+      image: require('../assets/images/sonata.jpeg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 17,
+      managed: true,
+      inspected: '9.2',
+    },
+    {
+      id: 2,
+      title: 'Ford Ranger 2022 Diesel',
+      price: 'PKR 1.4 crore',
+      year: '2022',
+      km: '32,000 km',
+      city: 'Lahore',
+      fuel: 'Diesel',
+      image: require('../assets/images/civic.jpg'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 14,
+      managed: true,
+      inspected: '8.9',
+    },
+  ],
+  'Duplicate File': [
+    {
+      id: 1,
+      title: 'Honda Civic 2022 Duplicate',
+      price: 'PKR 65 lacs',
+      year: '2022',
+      km: '25,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/mg.webp'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 10,
+      managed: false,
+      inspected: null,
+    },
+    {
+      id: 2,
+      title: 'Toyota Corolla 2021 Duplicate',
+      price: 'PKR 58 lacs',
+      year: '2021',
+      km: '38,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/stonic.jpg'),
+      isNew: false,
+      isStarred: false,
+      imagesCount: 8,
+      managed: false,
+      inspected: null,
+    },
+  ],
+  'Urgent': [
+    {
+      id: 1,
+      title: 'Toyota Vitz 2023 Urgent Sale',
+      price: 'PKR 35 lacs',
+      year: '2023',
+      km: '8,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/sonata.jpeg'),
+      isNew: true,
+      isStarred: true,
+      imagesCount: 12,
+      managed: false,
+      inspected: null,
+    },
+    {
+      id: 2,
+      title: 'Honda City 2022 Urgent',
+      price: 'PKR 48 lacs',
+      year: '2022',
+      km: '22,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/civic.jpg'),
+      isNew: false,
+      isStarred: true,
+      imagesCount: 15,
+      managed: false,
+      inspected: null,
+    },
+  ],
+  'Carry Daba': [
+    {
+      id: 1,
+      title: 'Suzuki Carry 2023 Daba',
+      price: 'PKR 25 lacs',
+      year: '2023',
+      km: '12,000 km',
+      city: 'Karachi',
+      fuel: 'Petrol',
+      image: require('../assets/images/mg.webp'),
+      isNew: true,
+      isStarred: false,
+      imagesCount: 8,
+      managed: false,
+      inspected: null,
+    },
+    {
+      id: 2,
+      title: 'Daihatsu Hijet 2022 Daba',
+      price: 'PKR 22 lacs',
+      year: '2022',
+      km: '28,000 km',
+      city: 'Lahore',
+      fuel: 'Petrol',
+      image: require('../assets/images/stonic.jpg'),
+      isNew: false,
+      isStarred: false,
+      imagesCount: 6,
+      managed: false,
+      inspected: null,
+    },
+  ],
+};
 
 const categories = [
   { label: 'Automatic cars', image: require('../assets/images/automatic_icon.png') },
@@ -91,7 +556,7 @@ function renderStars(rating) {
 }
 
 const NewCarsSection = ({ navigation }) => (
-  <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+  <ScrollView style={{ flex: 1, direction: 'ltr' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80, direction: 'ltr' }}>
     <View style={{ marginTop: 18, paddingHorizontal: 16 }}>
       <Text style={{ fontSize: 22, fontWeight: '600', marginVertical: 10, color: '#222' }}>Browse New Cars By Brand</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 6 }}>
@@ -107,17 +572,17 @@ const NewCarsSection = ({ navigation }) => (
         ))}
       </View>
       {/* Pagination dots */}
-      <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 8 }}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb', marginHorizontal: 3 }} />
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
-      </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 8 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#900C3F', marginHorizontal: 3 }} />
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
+        </View>
     </View>
     <View style={{ marginTop: 18, paddingHorizontal: 16 }}>
       <Text style={{ fontSize: 22, fontWeight: '600', marginVertical: 10, color: '#222' }}>Popular New Cars</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', marginTop: 10 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+        <View style={{ flexDirection: 'row', marginTop: 10, direction: 'ltr' }}>
           {popularNewCars.map((car, idx) => (
             <View
               key={car.name}
@@ -156,8 +621,8 @@ const NewCarsSection = ({ navigation }) => (
     {/* Newly Launched Cars Section */}
     <View style={{ marginTop: 32, paddingHorizontal: 16 }}>
       <Text style={{ fontSize: 22, fontWeight: '600', marginVertical: 10, color: '#222' }}>Newly Launched Cars</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', marginTop: 10 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+        <View style={{ flexDirection: 'row', marginTop: 10, direction: 'ltr' }}>
           {popularNewCars.map((car, idx) => (
             <View
               key={car.name + '-newly'}
@@ -195,8 +660,8 @@ const NewCarsSection = ({ navigation }) => (
     {/* Upcoming New Cars Section */}
     <View style={{ marginTop: 32, paddingHorizontal: 16 }}>
       <Text style={{ fontSize: 22, fontWeight: '600', marginVertical: 10, color: '#222' }}>Upcoming New Cars</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', marginTop: 10 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+        <View style={{ flexDirection: 'row', marginTop: 10, direction: 'ltr' }}>
           {popularNewCars.map((car, idx) => (
             <View
               key={car.name + '-upcoming'}
@@ -235,10 +700,10 @@ const NewCarsSection = ({ navigation }) => (
     <View style={{ marginTop: 32, paddingHorizontal: 16 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Text style={{ fontSize: 22, fontWeight: '600', color: '#222' }}>Car Comparison</Text>
-        <Text style={{ color: '#2563eb', fontWeight: '600', fontSize: 15 }}>View All</Text>
+        <Text style={{ color: '#900C3F', fontWeight: '600', fontSize: 15 }}>View All</Text>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', marginTop: 10 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+        <View style={{ flexDirection: 'row', marginTop: 10, direction: 'ltr' }}>
           {/* First comparison card */}
           <TouchableOpacity 
             style={{ width: 320,  backgroundColor: '#fff', borderRadius: 18, marginRight: 16, borderWidth: 1, borderColor: '#eee', elevation: 1, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, padding: 0, alignItems: 'center', justifyContent: 'center', height: 180 }}
@@ -300,7 +765,7 @@ const NewCarsSection = ({ navigation }) => (
     <View style={{ marginTop: 32, paddingHorizontal: 16 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <Text style={{ fontSize: 22, fontWeight: '600', color: '#222' }}>Car Reviews</Text>
-        <Text style={{ color: '#2563eb', fontWeight: '600', fontSize: 15 }}>View All</Text>
+        <Text style={{ color: '#900C3F', fontWeight: '600', fontSize: 15 }}>View All</Text>
       </View>
       {/* <ScrollView horizontal showsHorizontalScrollIndicator={false}> */}
         <View style={{ flexDirection: 'column' , marginTop: 10 }}>
@@ -349,7 +814,7 @@ const NewCarsSection = ({ navigation }) => (
     <View style={{ marginTop: 32, marginBottom: 10 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 6 }}>
         <Text style={{ fontSize: 22, fontWeight: '600', color: '#222' }}>Latest Videos</Text>
-        <TouchableOpacity><Text style={{ color: '#2563eb', fontWeight: '600', fontSize: 15 }}>View All</Text></TouchableOpacity>
+        <TouchableOpacity><Text style={{ color: '#900C3F', fontWeight: '600', fontSize: 15 }}>View All</Text></TouchableOpacity>
       </View>
       {/* Featured Video */}
       <View style={{ backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 16, marginTop: 10, marginBottom: 12, paddingBottom: 8, elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }}>
@@ -402,16 +867,19 @@ const bikeCategories = [
 const BikesSection = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Category');
   return (
-    <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+    <ScrollView style={{ flex: 1, direction: 'ltr' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80, direction: 'ltr' }}>
       <View style={{ marginTop: 18, paddingHorizontal: 16 }}>
         {/* Search Bar */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 10 : 0, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 10 : 0, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 2, direction: 'ltr' }}>
           <TextInput
             style={{ flex: 1, height: 40, fontSize: 16, color: '#222', backgroundColor: 'transparent' }}
             placeholder="Search used bikes"
             placeholderTextColor="#888"
             editable={false}
             pointerEvents="none"
+            textAlign="left"
+            textAlignVertical="center"
+            writingDirection="ltr"
           />
           <TouchableOpacity style={{ paddingLeft: 8 }} pointerEvents="none">
             <Text style={{ color: '#888', fontSize: 15 }}>| <Text >All Cities</Text></Text>
@@ -423,8 +891,8 @@ const BikesSection = ({ navigation }) => {
         <Text style={{ fontSize: 22, fontWeight: '700', color: '#222', marginBottom: 10 }}>Browse Used Bikes</Text>
         <View style={{ flexDirection: 'row', marginBottom: 14, marginTop: 10 }}>
           {['Category', 'Brand', 'Model', 'Cities'].map(tab => (
-            <TouchableOpacity key={tab} style={{ marginRight: 24, paddingBottom: 4, borderBottomWidth: activeTab === tab ? 2 : 0, borderBottomColor: activeTab === tab ? '#2563eb' : 'transparent' }} onPress={() => setActiveTab(tab)}>
-              <Text style={{ color: activeTab === tab ? '#2563eb' : '#444', fontSize: 16, fontWeight: activeTab === tab ? '700' : '400' }}>{tab}</Text>
+            <TouchableOpacity key={tab} style={{ marginRight: 24, paddingBottom: 4, borderBottomWidth: activeTab === tab ? 2 : 0, borderBottomColor: activeTab === tab ? '#900C3F' : 'transparent' }} onPress={() => setActiveTab(tab)}>
+              <Text style={{ color: activeTab === tab ? '#900C3F' : '#444', fontSize: 16, fontWeight: activeTab === tab ? '700' : '400' }}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -441,7 +909,7 @@ const BikesSection = ({ navigation }) => {
         )}
         {/* Pagination dots */}
         <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 8 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb', marginHorizontal: 3 }} />
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#900C3F', marginHorizontal: 3 }} />
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
         </View>
       </View>
@@ -476,8 +944,8 @@ const BikesSection = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Featured Used Cars</Text>
           <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.cardRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+          <View style={[styles.cardRow, { direction: 'ltr' }]}>
             <TouchableOpacity style={styles.carCard}>
               <Image source={require('../assets/images/stonic.jpg')} style={styles.carImage} resizeMode="contain" />
               <Text style={styles.carCardTitle}>KIA Stonic 2025</Text>
@@ -549,7 +1017,7 @@ const autostoreCategories = [
 ];
 
 const AutostoreSection = () => (
-  <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+  <ScrollView style={{ flex: 1, direction: 'ltr' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80, direction: 'ltr' }}>
     {/* Shop by category */}
     <View style={{ marginTop: 32, paddingHorizontal: 0 }}>
       <Text style={{ fontSize: 22, fontWeight: '700', color: '#222', marginBottom: 20, marginLeft: 16 }}>Shop by category</Text>
@@ -563,7 +1031,7 @@ const AutostoreSection = () => (
       </View>
       {/* Pagination dots */}
       <View style={{ flexDirection: 'row', justifyContent: 'center', marginVertical: 8 }}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb', marginHorizontal: 3 }} />
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#900C3F', marginHorizontal: 3 }} />
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#d1d5db', marginHorizontal: 3 }} />
       </View>
     </View>
@@ -586,6 +1054,16 @@ const Home = ({ navigation, route }) => {
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [newListing, setNewListing] = useState(null);
+
+  // Initialize car data manager with static data
+  useEffect(() => {
+    initializeCarData(carData);
+  }, []);
+
+  // Get cars from global data manager with real-time updates
+  const getCarsForCategory = (category) => {
+    return getCarsForModel(category, carData);
+  };
 
   // Handle new listing from SellYourCarScreen
   React.useEffect(() => {
@@ -626,10 +1104,16 @@ const Home = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <View style={[styles.container, { direction: 'ltr' }]}>
         {/* Top Navigation Tabs */}
-        <View style={styles.topTabsWrapper}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.topTabs}>
+        <View style={[styles.topTabsWrapper, { direction: 'ltr' }]}>
+          {/* Notification Badge */}
+          {global.notifications && global.notifications.length > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationCount}>{global.notifications.length}</Text>
+            </View>
+          )}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.topTabs, { direction: 'ltr' }]}>
             <TouchableOpacity
               style={[styles.tab, selectedTab === 'Used Cars' ? styles.tabActive : null]}
               onPress={() => setSelectedTab('Used Cars')}
@@ -659,28 +1143,17 @@ const Home = ({ navigation, route }) => {
 
         {/* Search Bar */}
         {selectedTab !== 'Bikes' && (
-          <View style={styles.searchBarContainer}>
-            <TouchableOpacity
-              style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 10 }}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('SearchUsedCars')}
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={selectedTab === 'New Cars' ? 'Search new cars' : 'Search used cars'}
-              placeholderTextColor="#888"
-              editable={false}
-              pointerEvents="none"
-            />
-            <TouchableOpacity style={styles.cityFilter} pointerEvents="none">
-              <Text style={styles.cityFilterText}>| All Cities</Text>
-            </TouchableOpacity>
-          </View>
+          <SearchBar
+            placeholder={selectedTab === 'New Cars' ? 'Search new cars' : 'Search used cars'}
+            editable={false}
+            locationText="All Cities"
+            onPress={() => navigation.navigate('SearchUsedCars')}
+          />
         )}
 
         {/* Dynamic Content */}
         {selectedTab === 'Used Cars' ? (
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+          <ScrollView style={{ flex: 1, direction: 'ltr' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80, direction: 'ltr' }}>
             {/* Success Message */}
             {showSuccessMessage && newListing && (
               <View style={styles.successMessageContainer}>
@@ -757,8 +1230,8 @@ const Home = ({ navigation, route }) => {
                 <Text style={styles.sectionTitle}>PakWheels Certified Cars</Text>
                 <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.cardRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+                <View style={[styles.cardRow, { direction: 'ltr' }]}>
                   <TouchableOpacity style={styles.carCard} onPress={() => navigation.navigate('CarDetailScreen', { carId: 'sonata2021' })}>
                     <Image source={require('../assets/images/sonata.jpeg')} style={styles.carImage} resizeMode="contain" />
                     <Text style={styles.carCardTitle}>Hyundai Sonata 2021</Text>
@@ -783,8 +1256,8 @@ const Home = ({ navigation, route }) => {
                 <Text style={styles.sectionTitle}>Managed by PakWheels</Text>
                 <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.cardRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+                <View style={[styles.cardRow, { direction: 'ltr' }]}>
                   <TouchableOpacity style={styles.carCard}>
                     <Image source={require('../assets/images/vitz.jpg')} style={styles.carImage} resizeMode="contain" />
                     <Text style={styles.carCardTitle}>Toyota Vitz 2018</Text>
@@ -809,14 +1282,21 @@ const Home = ({ navigation, route }) => {
                 <Text style={styles.sectionTitle}>Featured Used Cars</Text>
                 <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.cardRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+                <View style={[styles.cardRow, { direction: 'ltr' }]}>
                   <TouchableOpacity style={styles.carCard}>
                     <Image source={require('../assets/images/stonic.jpg')} style={styles.carImage} resizeMode="contain" />
                     <Text style={styles.carCardTitle}>KIA Stonic 2025</Text>
                     <Text style={styles.carCardPrice}>PKR 61.5 lacs</Text>
                     <Text style={styles.carCardCity}>Lahore</Text>
                     <Text style={styles.carCardDetails}>2025 | 30 km | Petrol</Text>
+                    {/* Bidding Badge */}
+                    <View style={styles.biddingBadge}>
+                      <Text style={styles.biddingIcon}>🏷️</Text>
+                      <Text style={styles.biddingText}>Live Bidding</Text>
+                      <Text style={styles.biddingTimer}>2d 5h left</Text>
+                    </View>
+                    <Text style={styles.biddingCurrentBid}>Current: PKR 58.5 lacs</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.carCard}>
                     <Image source={require('../assets/images/mg.webp')} style={styles.carImage} resizeMode="contain" />
@@ -835,8 +1315,8 @@ const Home = ({ navigation, route }) => {
                 <Text style={styles.sectionTitle}>PakWheels Autostore</Text>
                 <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.cardRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+                <View style={[styles.cardRow, { direction: 'ltr' }]}>
                   <TouchableOpacity style={styles.carCard}>
                     <Image source={require('../assets/images/cleaner.jpg')} style={styles.carImage} resizeMode="contain" />
                     <Text style={styles.carCardTitle}>All Purpose Cleaner</Text>
@@ -932,37 +1412,24 @@ const Home = ({ navigation, route }) => {
         ) : null}
 
         {/* Bottom Navigation Bar */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.bottomNavItem}>
-            <Text style={styles.bottomNavIcon}>🏠</Text>
-            <Text style={styles.bottomNavLabelActive}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('AdsScreen')}>
-            <Text style={styles.bottomNavIcon}>📢</Text>
-            <Text style={styles.bottomNavLabel}>My Ads</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sellNowButton} onPress={handleSellButtonPress}>
-            <Text style={styles.sellNowPlus}>+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ChatScreen')}>
-            <Text style={styles.bottomNavIcon}>💬</Text>
-            <Text style={styles.bottomNavLabel}>Chat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ProfileScreen')}>
-            <Text style={styles.bottomNavIcon}>☰</Text>
-            <Text style={styles.bottomNavLabel}>More</Text>
-          </TouchableOpacity>
-        </View>
+        <BottomNavigation
+          activeTab="Home"
+          onHomePress={() => {}}
+          onAdsPress={() => navigation.navigate('AdsScreen')}
+          onChatPress={() => navigation.navigate('ChatScreen')}
+          onMorePress={() => navigation.navigate('ProfileScreen')}
+          onSellPress={handleSellButtonPress}
+        />
       </View>
       
               {/* Success Message */}
         {showSuccessMessage && (
           <View style={styles.successMessage}>
             <Text style={styles.successMessageText}>✅ Your car ad has been posted successfully!</Text>
-            <TouchableOpacity 
-              style={styles.successMessageClose}
-              onPress={() => setShowSuccessMessage(false)}
-            >
+                          <TouchableOpacity 
+                style={styles.successMessageClose}
+                onPress={() => setShowSuccessMessage(false)}
+              >
               <Text style={styles.successMessageCloseText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -982,11 +1449,19 @@ const Home = ({ navigation, route }) => {
         onClose={() => setAuthModalVisible(false)}
         onSignIn={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignInScreen');
+          navigation.navigate('SignInScreen', {
+            returnScreen: 'Home',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         onSignUp={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen');
+          navigation.navigate('SignUpScreen', {
+            returnScreen: 'Home',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         action="sell"
         navigation={navigation}
@@ -996,12 +1471,13 @@ const Home = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#193A7A', paddingBottom: 40 },
-  container: { flex: 1, backgroundColor: '#f9fafd' },
+  safeArea: { flex: 1, backgroundColor: '#900C3F', paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: '#f9fafd', direction: 'ltr' },
   topTabsWrapper: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     paddingBottom: 10,
+    direction: 'ltr',
   },
   topTabs: {
     flexDirection: 'row',
@@ -1009,12 +1485,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingTop: Platform.select({ android: 32, ios: 18 }), // more space on Android
+    direction: 'ltr',
   },
   tab: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: 20, marginRight: 10, backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 } },
-  tabActive: { backgroundColor: '#2563eb', elevation: 4, shadowOpacity: 0.15 },
-  tabText: { color: '#193A7A', fontWeight: '500', fontSize: 15 },
+  tabActive: { backgroundColor: '#900C3F', elevation: 4, shadowOpacity: 0.15 },
+  tabText: { color: '#900C3F', fontWeight: '500', fontSize: 15 },
   tabTextActive: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  searchBarContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 16, marginTop: 10, borderRadius: 12, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 10 : 0, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 2 },
+  searchBarContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', marginHorizontal: 16, marginTop: 10, borderRadius: 12, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 10 : 0, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 2, direction: 'ltr' },
   searchInput: { flex: 1, height: 40, fontSize: 16, color: '#222', backgroundColor: 'transparent' },
   cityFilter: { paddingLeft: 8 },
   cityFilterText: { color: '#888', fontSize: 15 },
@@ -1022,9 +1499,9 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 22, fontWeight: '600', marginVertical: 10, color: '#222', marginBottom: 20 },
   browseTabs: { flexDirection: 'row', marginBottom: 14, marginTop: 10 },
   browseTab: { marginRight: 24, paddingBottom: 4 },
-  browseTabActive: { borderBottomWidth: 2, borderBottomColor: '#2563eb' },
+  browseTabActive: { borderBottomWidth: 2, borderBottomColor: '#900C3F' },
   browseTabText: { color: '#444', fontSize: 16 },
-  browseTabTextActive: { color: '#2563eb', fontSize: 16, fontWeight: '700' },
+  browseTabTextActive: { color: '#900C3F', fontSize: 16, fontWeight: '700' },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 6 },
   categoryItem: { width: '23%', backgroundColor: '#fff', borderRadius: 14, alignItems: 'center', paddingVertical: 20, marginBottom: 14, elevation: 2, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
   categoryIconWrapper: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#e6edfa', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
@@ -1034,14 +1511,14 @@ const styles = StyleSheet.create({
   offeringCard: { width: 170, height: 150, backgroundColor: '#fff', borderRadius: 16, marginRight: 18, alignItems: 'center', justifyContent: 'center', padding: 12, elevation: 3, shadowColor: '#000', shadowOpacity: 0.10, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   offeringIconWrapper: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#e6edfa', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   offeringIcon: { fontSize: 32 },
-  offeringSubtitle: { color: '#2563eb', fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  offeringSubtitle: { color: '#900C3F', fontWeight: '700', fontSize: 13, marginBottom: 2 },
   offeringTitle: { fontWeight: '700', fontSize: 16, color: '#222', textAlign: 'center' },
-  bottomNav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 70, backgroundColor: '#fff', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', zIndex: 10, elevation: 10 },
+  bottomNav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 70, backgroundColor: '#fff', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', zIndex: 10, elevation: 10, direction: 'ltr' },
   bottomNavItem: { alignItems: 'center', flex: 1 },
   bottomNavIcon: { fontSize: 24, marginBottom: 2 },
   bottomNavLabel: { fontSize: 12, color: '#888' },
-  bottomNavLabelActive: { fontSize: 12, color: '#2563eb', fontWeight: '700' },
-  sellNowButton: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center', marginBottom: 30, zIndex: 20, elevation: 6, shadowColor: '#2563eb', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  bottomNavLabelActive: { fontSize: 12, color: '#900C3F', fontWeight: '700' },
+  sellNowButton: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#900C3F', alignItems: 'center', justifyContent: 'center', marginBottom: 30, zIndex: 20, elevation: 6, shadowColor: '#900C3F', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
   sellNowPlus: { color: '#fff', fontSize: 36, fontWeight: 'bold', marginTop: -2 },
   sectionTitleCenter: { textAlign: 'center' },
   sectionTitleMarginLeft: { marginLeft: 16 },
@@ -1080,7 +1557,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   viewAll: {
-    color: '#2563eb',
+    color: '#900C3F',
     fontWeight: '600',
     fontSize: 15,
   },
@@ -1088,6 +1565,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingLeft: 16,
     paddingRight: 8,
+    direction: 'ltr',
   },
   carCard: {
     width: 210,
@@ -1124,7 +1602,7 @@ const styles = StyleSheet.create({
   carCardPrice: {
     fontWeight: '700',
     fontSize: 15,
-    color: '#2563eb',
+    color: '#900C3F',
     marginBottom: 2,
   },
   carCardCity: {
@@ -1135,6 +1613,54 @@ const styles = StyleSheet.create({
   carCardDetails: {
     color: '#888',
     fontSize: 13,
+  },
+  biddingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  biddingIcon: {
+    fontSize: 12,
+    marginRight: 2,
+  },
+  biddingText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#d97706',
+    marginRight: 4,
+  },
+  biddingTimer: {
+    fontSize: 9,
+    color: '#d97706',
+    fontWeight: '500',
+  },
+  biddingCurrentBid: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#d97706',
+    marginTop: 4,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? 32 : 18,
+    right: 16,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  notificationCount: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   sectionSpacing: {
     marginTop: 36,

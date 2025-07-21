@@ -119,14 +119,14 @@ const ChoosePlanScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
   },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   learnMoreLink: {
     fontSize: 14,
-    color: '#2563eb',
+    color: '#900C3F',
     fontWeight: '600',
   },
   benefitsList: {
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   actionButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#900C3F',
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',

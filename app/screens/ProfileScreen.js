@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform, I18nManager } from 'react-native';
 import SellModal from '../modals/SellModal';
 import AuthModal from '../modals/AuthModal';
 import SuccessModal from '../modals/SuccessModal';
 import { isUserLoggedIn, getCurrentUser, clearUserSession, formatUserName } from './auth/AuthUtils';
+import { addSampleNotifications } from '../utils/NotificationUtils';
 
 const Option = ({ icon, label, right, onPress }) => (
   <TouchableOpacity style={styles.optionRow} onPress={onPress} activeOpacity={0.7}>
     <Text style={styles.optionIcon}>{icon}</Text>
     <Text style={styles.optionLabel}>{label}</Text>
-    {right && <Text style={styles.optionRight}>{right}</Text>}
+    {right && (
+      typeof right === 'string' ? (
+        <Text style={styles.optionRight}>{right}</Text>
+      ) : (
+        right
+      )
+    )}
   </TouchableOpacity>
 );
 
@@ -17,9 +24,19 @@ const ProfileScreen = ({ navigation }) => {
   const [sellModalVisible, setSellModalVisible] = useState(false);
   const [authModalVisible, setAuthModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(global.notifications?.length || 0);
 
   const currentUser = getCurrentUser();
   const isLoggedIn = isUserLoggedIn();
+
+  // Update notification count when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setNotificationCount(global.notifications?.length || 0);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const handleSellOption = (option) => {
     setSellModalVisible(false);
@@ -50,10 +67,10 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
+      <View style={[styles.container, { direction: 'ltr' }]}>
         {/* iOS blue status bar area */}
-        {Platform.OS === 'ios' && <SafeAreaView style={{ backgroundColor: '#2563eb' }} />}
+        {Platform.OS === 'ios' && <SafeAreaView style={{ backgroundColor: '#900C3F' }} />}
         <View style={styles.headerGradient}>
           {isLoggedIn ? (
             <>
@@ -76,15 +93,31 @@ const ProfileScreen = ({ navigation }) => {
             </>
           )}
         </View>
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.scrollContainer, { direction: 'ltr' }]} style={{ direction: 'ltr' }} showsVerticalScrollIndicator={false}>
           {/* Personal Section */}
           <Text style={styles.sectionTitle}>Personal</Text>
           <Option icon={'📄'} label="My Activity" right={'▼'} />
           <Option icon={'📄'} label="My Credits" />
           <Option icon={'🤍'} label="Alerts" right={'▼'} />
-          <Option icon={'🔔'} label="Notifications" />
+          <Option 
+            icon={'🔔'} 
+            label="Notifications" 
+            right={notificationCount > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationCount}>{notificationCount}</Text>
+              </View>
+            ) : undefined} 
+            onPress={() => navigation.navigate('NotificationScreen')} 
+          />
           <Option icon={'⚙️'} label="Theme" />
           <Option icon={'🗂️'} label="Choose Language" />
+          {__DEV__ && (
+            <Option icon={'🧪'} label="Add Test Notifications" onPress={() => {
+              addSampleNotifications();
+              // Force re-render to update notification count
+              navigation.setParams({ refresh: Date.now() });
+            }} />
+          )}
           <View style={styles.sectionDivider} />
           {/* Products Section */}
           <Text style={styles.sectionTitle}>Products</Text>
@@ -153,11 +186,19 @@ const ProfileScreen = ({ navigation }) => {
         onClose={() => setAuthModalVisible(false)}
         onSignIn={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignInScreen');
+          navigation.navigate('SignInScreen', {
+            returnScreen: 'ProfileScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         onSignUp={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen');
+          navigation.navigate('SignUpScreen', {
+            returnScreen: 'ProfileScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         action="sell"
         navigation={navigation}
@@ -176,10 +217,10 @@ const ProfileScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#193A7A', paddingBottom: 40 },
-  container: { flex: 1, backgroundColor: '#f9fafd' },
+  safeArea: { flex: 1, backgroundColor: '#900C3F', paddingBottom: 40, direction: 'ltr' },
+  container: { flex: 1, backgroundColor: '#f9fafd', direction: 'ltr' },
   headerGradient: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     paddingTop: 36,
     paddingBottom: 28,
     paddingHorizontal: 20,
@@ -226,6 +267,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
+    direction: 'ltr',
   },
   optionIcon: {
     fontSize: 22,
@@ -243,6 +285,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#bbb',
     marginLeft: 8,
+  },
+  notificationBadge: {
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 8,
+  },
+  notificationCount: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   sectionDivider: {
     height: 10,
@@ -263,6 +321,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     marginBottom: 18,
     justifyContent: 'flex-start',
+    direction: 'ltr',
   },
   logoutIcon: {
     fontSize: 22,
@@ -280,6 +339,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginTop: 12,
     gap: 12,
+    direction: 'ltr',
   },
   signInBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -301,7 +361,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   signUpBtnText: {
-    color: '#193A7A',
+    color: '#900C3F',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -319,7 +379,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, 
     borderTopColor: '#eee', 
     zIndex: 10, 
-    elevation: 10 
+    elevation: 10,
+    direction: 'ltr'
   },
   bottomNavItem: { 
     alignItems: 'center', 
@@ -335,20 +396,20 @@ const styles = StyleSheet.create({
   },
   bottomNavLabelActive: { 
     fontSize: 12, 
-    color: '#2563eb', 
+    color: '#900C3F', 
     fontWeight: '700' 
   },
   sellNowButton: { 
     width: 62, 
     height: 62, 
     borderRadius: 31, 
-    backgroundColor: '#2563eb', 
+    backgroundColor: '#900C3F', 
     alignItems: 'center', 
     justifyContent: 'center', 
     marginBottom: 30, 
     zIndex: 20, 
     elevation: 6, 
-    shadowColor: '#2563eb', 
+    shadowColor: '#900C3F', 
     shadowOpacity: 0.18, 
     shadowRadius: 8, 
     shadowOffset: { width: 0, height: 2 } 

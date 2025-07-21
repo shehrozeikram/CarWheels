@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Platform, I18nManager } from 'react-native';
 import SellModal from '../modals/SellModal';
 import AuthModal from '../modals/AuthModal';
 import { isUserLoggedIn } from './auth/AuthUtils';
@@ -24,10 +24,10 @@ const ChatScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
+      <View style={[styles.container, { direction: 'ltr' }]}>
         {/* iOS blue status bar area */}
-        {Platform.OS === 'ios' && <SafeAreaView style={{ backgroundColor: '#193A7A' }} />}
+        {Platform.OS === 'ios' && <SafeAreaView style={{ backgroundColor: '#900C3F' }} />}
         
         {/* Header */}
         <View style={styles.header}>
@@ -104,11 +104,19 @@ const ChatScreen = ({ navigation }) => {
         onClose={() => setAuthModalVisible(false)}
         onSignIn={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignInScreen');
+          navigation.navigate('SignInScreen', {
+            returnScreen: 'ChatScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         onSignUp={() => {
           setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen');
+          navigation.navigate('SignUpScreen', {
+            returnScreen: 'ChatScreen',
+            returnParams: route.params,
+            action: 'sell'
+          });
         }}
         action="sell"
         navigation={navigation}
@@ -118,10 +126,10 @@ const ChatScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#193A7A', paddingBottom: 40 },
-  container: { flex: 1, backgroundColor: '#fff' },
+  safeArea: { flex: 1, backgroundColor: '#900C3F', paddingBottom: 40, direction: 'ltr' },
+  container: { flex: 1, backgroundColor: '#fff', direction: 'ltr' },
   header: {
-    backgroundColor: '#193A7A',
+    backgroundColor: '#900C3F',
     paddingTop: Platform.OS === 'ios' ? 10 : 36,
     paddingBottom: 16,
     alignItems: 'center',
@@ -168,7 +176,7 @@ const styles = StyleSheet.create({
   chatIconFront: {
     width: 80,
     height: 60,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#900C3F',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -176,7 +184,7 @@ const styles = StyleSheet.create({
   chatIconFrontInner: {
     width: 60,
     height: 40,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#900C3F',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -206,7 +214,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   startExploringButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#900C3F',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 8,
@@ -230,7 +238,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, 
     borderTopColor: '#eee', 
     zIndex: 10, 
-    elevation: 10 
+    elevation: 10,
+    direction: 'ltr'
   },
   bottomNavItem: { 
     alignItems: 'center', 
@@ -246,20 +255,20 @@ const styles = StyleSheet.create({
   },
   bottomNavLabelActive: { 
     fontSize: 12, 
-    color: '#2563eb', 
+    color: '#900C3F', 
     fontWeight: '700' 
   },
   sellNowButton: { 
     width: 62, 
     height: 62, 
     borderRadius: 31, 
-    backgroundColor: '#2563eb', 
+    backgroundColor: '#900C3F', 
     alignItems: 'center', 
     justifyContent: 'center', 
     marginBottom: 30, 
     zIndex: 20, 
     elevation: 6, 
-    shadowColor: '#2563eb', 
+    shadowColor: '#900C3F', 
     shadowOpacity: 0.18, 
     shadowRadius: 8, 
     shadowOffset: { width: 0, height: 2 } 

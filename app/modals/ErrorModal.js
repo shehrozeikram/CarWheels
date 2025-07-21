@@ -9,9 +9,19 @@ import {
   Dimensions,
 } from 'react-native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-const ErrorModal = ({ visible, onClose, title = 'Error', message, action = 'try_again' }) => {
+const ErrorModal = ({ 
+  visible, 
+  onClose, 
+  title = 'Error', 
+  message = 'Something went wrong. Please try again.',
+  icon = '❌',
+  action = 'try_again',
+  actionText = 'Try Again',
+  showCancel = false,
+  cancelText = 'Cancel'
+}) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -19,26 +29,42 @@ const ErrorModal = ({ visible, onClose, title = 'Error', message, action = 'try_
   useEffect(() => {
     if (visible) {
       // Start animations
+      Animated.parallel([
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Shake animation
       Animated.sequence([
-        Animated.parallel([
-          Animated.timing(opacityAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
-          Animated.timing(shakeAnim, { toValue: -10, duration: 100, useNativeDriver: true }),
-          Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
-          Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
-        ]),
+        Animated.timing(shakeAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: -1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
       ]).start();
     } else {
       // Reset animations
@@ -52,12 +78,16 @@ const ErrorModal = ({ visible, onClose, title = 'Error', message, action = 'try_
     switch (action) {
       case 'try_again':
         return 'Try Again';
-      case 'go_back':
-        return 'Go Back';
+      case 'ok':
+        return 'OK';
+      case 'close':
+        return 'Close';
+      case 'retry':
+        return 'Retry';
       case 'dismiss':
         return 'Dismiss';
       default:
-        return 'OK';
+        return actionText || 'Try Again';
     }
   };
 
@@ -74,6 +104,11 @@ const ErrorModal = ({ visible, onClose, title = 'Error', message, action = 'try_
           { opacity: opacityAnim }
         ]}
       >
+        <TouchableOpacity 
+          style={styles.overlayTouchable}
+          activeOpacity={1}
+          onPress={showCancel ? onClose : undefined}
+        />
         <Animated.View 
           style={[
             styles.modalContainer,
@@ -83,7 +118,7 @@ const ErrorModal = ({ visible, onClose, title = 'Error', message, action = 'try_
                 { scale: scaleAnim },
                 {
                   translateX: shakeAnim.interpolate({
-                    inputRange: [-10, 10],
+                    inputRange: [-1, 1],
                     outputRange: [-10, 10],
                   }),
                 },
@@ -94,7 +129,7 @@ const ErrorModal = ({ visible, onClose, title = 'Error', message, action = 'try_
           {/* Error Icon */}
           <View style={styles.iconContainer}>
             <View style={styles.iconCircle}>
-              <Text style={styles.errorIcon}>⚠️</Text>
+              <Text style={styles.iconText}>{icon}</Text>
             </View>
           </View>
 
@@ -106,25 +141,25 @@ const ErrorModal = ({ visible, onClose, title = 'Error', message, action = 'try_
             </Text>
           </View>
 
-          {/* Action Button */}
+          {/* Action Buttons */}
           <View style={styles.buttonContainer}>
+            {showCancel && (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.cancelButton]}
+                onPress={onClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelButtonText}>{cancelText}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, styles.primaryButton]}
               onPress={onClose}
               activeOpacity={0.8}
             >
-              <Text style={styles.actionButtonText}>{getActionButtonText()}</Text>
+              <Text style={styles.primaryButtonText}>{getActionButtonText()}</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Close Button */}
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-            activeOpacity={0.6}
-          >
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -138,6 +173,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+  },
+  overlayTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalContainer: {
     backgroundColor: '#fff',
@@ -166,7 +208,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#ef4444',
   },
-  errorIcon: {
+  iconText: {
     fontSize: 40,
   },
   content: {
@@ -189,33 +231,38 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: '100%',
-    marginBottom: 16,
+    flexDirection: 'row',
+    gap: 12,
   },
   actionButton: {
-    backgroundColor: '#ef4444',
+    flex: 1,
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: 'center',
     elevation: 4,
+  },
+  primaryButton: {
+    backgroundColor: '#ef4444',
     shadowColor: '#ef4444',
     shadowOpacity: 0.3,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
-  actionButtonText: {
+  primaryButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
   },
-  closeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  cancelButton: {
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
-  closeButtonText: {
-    color: '#9ca3af',
-    fontSize: 16,
-    fontWeight: '500',
+  cancelButtonText: {
+    color: '#6b7280',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });
 

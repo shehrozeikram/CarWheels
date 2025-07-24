@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform, Image, Modal, I18nManager } from 'react-native';
-import SellModal from '../modals/SellModal';
-import AuthModal from '../modals/AuthModal';
 import SuccessModal from '../modals/SuccessModal';
 import InfoModal from '../modals/InfoModal';
-import { isUserLoggedIn, getCurrentUser } from './auth/AuthUtils';
+import { getCurrentUser } from './auth/AuthUtils';
 import { addCarToManager, updateCarData } from '../utils/CarDataManager';
 
 const AdsScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Active');
-  const [sellModalVisible, setSellModalVisible] = useState(false);
-  const [authModalVisible, setAuthModalVisible] = useState(false);
+
   const [userAds, setUserAds] = useState([]);
   const [promotionModalVisible, setPromotionModalVisible] = useState(false);
   const [selectedAd, setSelectedAd] = useState(null);
@@ -182,14 +179,7 @@ const AdsScreen = ({ navigation }) => {
     // Handle different sell options here
   };
 
-  const handleSellButtonPress = () => {
-    if (!isUserLoggedIn()) {
-      setAuthModalVisible(true);
-      return;
-    }
-    
-    setSellModalVisible(true);
-  };
+
 
   const handleAdAction = (ad, action) => {
     switch (action) {
@@ -531,7 +521,11 @@ const AdsScreen = ({ navigation }) => {
         
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Image source={require('../assets/images/back_arrow.png')} style={styles.backArrowImage} />
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>My Ads</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         {/* Tabs */}
@@ -590,61 +584,10 @@ const AdsScreen = ({ navigation }) => {
         {/* Content Area */}
         {renderContent()}
 
-        {/* Bottom Navigation Bar */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('Home')}>
-            <Text style={styles.bottomNavIcon}>🏠</Text>
-            <Text style={styles.bottomNavLabel}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem}>
-            <Text style={styles.bottomNavIcon}>📢</Text>
-            <Text style={styles.bottomNavLabelActive}>My Ads</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sellNowButton} onPress={handleSellButtonPress}>
-            <Text style={styles.sellNowPlus}>+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ChatScreen')}>
-            <Text style={styles.bottomNavIcon}>💬</Text>
-            <Text style={styles.bottomNavLabel}>Chat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ProfileScreen')}>
-            <Text style={styles.bottomNavIcon}>☰</Text>
-            <Text style={styles.bottomNavLabel}>More</Text>
-          </TouchableOpacity>
-        </View>
+
       </View>
       
-      {/* Sell Modal */}
-      <SellModal
-        visible={sellModalVisible}
-        onClose={() => setSellModalVisible(false)}
-        onSelectOption={handleSellOption}
-        navigation={navigation}
-      />
 
-      {/* Auth Modal */}
-      <AuthModal
-        visible={authModalVisible}
-        onClose={() => setAuthModalVisible(false)}
-        onSignIn={() => {
-          setAuthModalVisible(false);
-          navigation.navigate('SignInScreen', {
-            returnScreen: 'AdsScreen',
-            returnParams: route.params,
-            action: 'sell'
-          });
-        }}
-        onSignUp={() => {
-          setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen', {
-            returnScreen: 'AdsScreen',
-            returnParams: route.params,
-            action: 'sell'
-          });
-        }}
-        action="sell"
-        navigation={navigation}
-      />
 
       {/* Promotion Modal */}
       {renderPromotionModal()}
@@ -677,13 +620,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#900C3F',
     paddingTop: Platform.OS === 'ios' ? 10 : 36,
     paddingBottom: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  backButton: {
+    paddingRight: 8,
+    paddingVertical: 6,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backArrowImage: {
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
+    marginLeft: 2,
+    tintColor: '#fff',
   },
   headerTitle: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 30,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -1017,61 +980,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  // Bottom Navigation Styles
-  bottomNav: { 
-    position: 'absolute', 
-    left: 0, 
-    right: 0, 
-    bottom: 0, 
-    height: 70, 
-    backgroundColor: '#fff', 
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    alignItems: 'center', 
-    borderTopWidth: 1, 
-    borderTopColor: '#eee', 
-    zIndex: 10, 
-    elevation: 10,
-    direction: 'ltr'
-  },
-  bottomNavItem: { 
-    alignItems: 'center', 
-    flex: 1 
-  },
-  bottomNavIcon: { 
-    fontSize: 24, 
-    marginBottom: 2 
-  },
-  bottomNavLabel: { 
-    fontSize: 12, 
-    color: '#888' 
-  },
-  bottomNavLabelActive: { 
-    fontSize: 12, 
-    color: '#900C3F', 
-    fontWeight: '700' 
-  },
-  sellNowButton: { 
-    width: 62, 
-    height: 62, 
-    borderRadius: 31, 
-    backgroundColor: '#900C3F', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginBottom: 30, 
-    zIndex: 20, 
-    elevation: 6, 
-    shadowColor: '#900C3F', 
-    shadowOpacity: 0.18, 
-    shadowRadius: 8, 
-    shadowOffset: { width: 0, height: 2 } 
-  },
-  sellNowPlus: { 
-    color: '#fff', 
-    fontSize: 36, 
-    fontWeight: 'bold', 
-    marginTop: -2 
-  },
+
   // Modal Styles
   modalContainer: {
     flex: 1,

@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platfo
 import { WebView } from 'react-native-webview';
 import {  StatusBar } from 'react-native';
 import 'react-native-gesture-handler';
-import SellModal from '../modals/SellModal';
-import AuthModal from '../modals/AuthModal';
 import SuccessModal from '../modals/SuccessModal';
-import { isUserLoggedIn } from './auth/AuthUtils';
-import { SearchBar, BottomNavigation } from '../components';
+import { SearchBar } from '../components';
 import { getCarsForModel, initializeCarData, addModelUpdateListener } from '../utils/CarDataManager';
+import featuredVehiclesService from '../services/featuredVehiclesService';
+import certifiedVehiclesService from '../services/certifiedVehiclesService';
+import managedVehiclesService from '../services/managedVehiclesService';
 
 const carData = {
   'Daihatsu Mira': [
@@ -512,6 +512,11 @@ const offerings = [
   {
     title: 'CAR INSURANCE',
     icon: '🛡️',
+    subtitle: 'PAKWHEELS',
+  },
+  {
+    title: 'AFFILIATION & BADGES',
+    icon: '🏢',
     subtitle: 'PAKWHEELS',
   },
 ];
@@ -1050,14 +1055,240 @@ const AutostoreSection = () => (
 const Home = ({ navigation, route }) => {
   // Add state for selected tab
   const [selectedTab, setSelectedTab] = useState('Used Cars');
-  const [sellModalVisible, setSellModalVisible] = useState(false);
-  const [authModalVisible, setAuthModalVisible] = useState(false);
+
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showSignInSuccess, setShowSignInSuccess] = useState(false);
   const [newListing, setNewListing] = useState(null);
+  const [featuredVehicles, setFeaturedVehicles] = useState([]);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
+  const [certifiedVehicles, setCertifiedVehicles] = useState([]);
+  const [isLoadingCertified, setIsLoadingCertified] = useState(false);
+  const [managedVehicles, setManagedVehicles] = useState([]);
+  const [isLoadingManaged, setIsLoadingManaged] = useState(false);
 
   // Initialize car data manager with static data
   useEffect(() => {
     initializeCarData(carData);
+  }, []);
+
+  // Load featured vehicles
+  useEffect(() => {
+    const loadFeaturedVehicles = async () => {
+      setIsLoadingFeatured(true);
+      try {
+        const response = await featuredVehiclesService.getFeaturedVehicles(10);
+        console.log('Featured Vehicles Response:', response);
+        
+        if (response && response.data) {
+          // Transform API data to match our car format
+          // The API returns vehicles grouped by condition, so we need to flatten them
+          const allVehicles = [];
+          
+          // Add vehicles from each condition group
+          if (response.data.new) allVehicles.push(...response.data.new);
+          if (response.data.used) allVehicles.push(...response.data.used);
+          if (response.data['certified-pre-owned']) allVehicles.push(...response.data['certified-pre-owned']);
+          if (response.data.salvage) allVehicles.push(...response.data.salvage);
+          
+          console.log('All vehicles from API:', allVehicles);
+          
+          const transformedVehicles = allVehicles.map(vehicle => ({
+            id: vehicle.id,
+            title: vehicle.title || `${vehicle.make?.name} ${vehicle.model?.name}`,
+            price: `PKR ${vehicle.price ? parseFloat(vehicle.price).toLocaleString() : 'N/A'}`,
+            year: vehicle.year?.toString() || 'N/A',
+            km: vehicle.mileage ? `${vehicle.mileage.toLocaleString()} km` : 'N/A',
+            city: vehicle.location || 'N/A',
+            fuel: vehicle.fuel_type || 'N/A',
+            image: vehicle.images && vehicle.images.length > 0 
+              ? { uri: `http://192.168.18.104:8000/${vehicle.images[0]}` }
+              : require('../assets/images/alto.webp'),
+            isNew: vehicle.condition === 'new',
+            isStarred: vehicle.is_featured || false,
+            imagesCount: vehicle.images ? vehicle.images.length : 0,
+            managed: false,
+            inspected: null,
+            sellerEmail: vehicle.user?.email,
+            sellerName: vehicle.user?.name,
+            biddingEnabled: false,
+            biddingEndTime: null,
+            currentBid: null,
+            bids: [],
+            highestBidder: null,
+          }));
+          
+          console.log('Transformed Featured Vehicles:', transformedVehicles);
+          setFeaturedVehicles(transformedVehicles);
+        } else {
+          console.log('No featured vehicles data, using fallback');
+          setFeaturedVehicles([]);
+        }
+      } catch (error) {
+        console.error('Error loading featured vehicles:', error);
+        setFeaturedVehicles([]);
+      } finally {
+        setIsLoadingFeatured(false);
+      }
+    };
+
+    loadFeaturedVehicles();
+  }, []);
+
+  // Load certified vehicles
+  useEffect(() => {
+    const loadCertifiedVehicles = async () => {
+      setIsLoadingCertified(true);
+      try {
+        const response = await certifiedVehiclesService.getCertifiedVehicles(10);
+        console.log('Certified Vehicles Response:', response);
+        
+        console.log('Certified Vehicles Response Structure:', {
+          response: response,
+          responseType: typeof response,
+          hasData: !!response.data,
+          dataType: typeof response.data,
+          isArray: Array.isArray(response.data),
+          keys: response ? Object.keys(response) : 'no response'
+        });
+        
+        // Handle different possible response structures
+        let vehiclesData = null;
+        if (response && response.data && Array.isArray(response.data)) {
+          vehiclesData = response.data;
+        } else if (response && Array.isArray(response)) {
+          vehiclesData = response;
+        } else if (response && response.data && typeof response.data === 'object') {
+          // If data is an object, try to find the vehicles array
+          vehiclesData = response.data.vehicles || response.data.data || response.data.items || [];
+        } else {
+          console.log('No valid vehicles data found in response');
+          setCertifiedVehicles([]);
+          return;
+        }
+        
+        console.log('Vehicles data to transform:', vehiclesData);
+        
+        if (vehiclesData && vehiclesData.length > 0) {
+          // Transform API data to match our car format
+          const transformedVehicles = vehiclesData.map(vehicle => ({
+            id: vehicle.id,
+            title: vehicle.title || `${vehicle.make?.name} ${vehicle.model?.name}`,
+            price: `PKR ${vehicle.price ? parseFloat(vehicle.price).toLocaleString() : 'N/A'}`,
+            year: vehicle.year?.toString() || 'N/A',
+            km: vehicle.mileage ? `${vehicle.mileage.toLocaleString()} km` : 'N/A',
+            city: vehicle.location || 'N/A',
+            fuel: vehicle.fuel_type || 'N/A',
+            image: vehicle.images && vehicle.images.length > 0 
+              ? { uri: `http://192.168.18.104:8000/${vehicle.images[0]}` }
+              : require('../assets/images/alto.webp'),
+            isNew: vehicle.condition === 'new',
+            isStarred: vehicle.is_featured || false,
+            imagesCount: vehicle.images ? vehicle.images.length : 0,
+            managed: false,
+            inspected: null,
+            sellerEmail: vehicle.user?.email,
+            sellerName: vehicle.user?.name,
+            biddingEnabled: false,
+            biddingEndTime: null,
+            currentBid: null,
+            bids: [],
+            highestBidder: null,
+            isCertified: true, // Mark as certified
+          }));
+          
+          console.log('Transformed Certified Vehicles:', transformedVehicles);
+          setCertifiedVehicles(transformedVehicles);
+        } else {
+          console.log('No certified vehicles data, using fallback');
+          setCertifiedVehicles([]);
+        }
+      } catch (error) {
+        console.error('Error loading certified vehicles:', error);
+        setCertifiedVehicles([]);
+      } finally {
+        setIsLoadingCertified(false);
+      }
+    };
+
+    loadCertifiedVehicles();
+  }, []);
+
+  // Load managed vehicles
+  useEffect(() => {
+    const loadManagedVehicles = async () => {
+      setIsLoadingManaged(true);
+      try {
+        const response = await managedVehiclesService.getManagedVehicles(10);
+        console.log('Managed Vehicles Response:', response);
+        
+        console.log('Managed Vehicles Response Structure:', {
+          response: response,
+          responseType: typeof response,
+          hasData: !!response.data,
+          dataType: typeof response.data,
+          isArray: Array.isArray(response.data),
+          keys: response ? Object.keys(response) : 'no response'
+        });
+        
+        // Handle different possible response structures
+        let vehiclesData = null;
+        if (response && response.data && Array.isArray(response.data)) {
+          vehiclesData = response.data;
+        } else if (response && Array.isArray(response)) {
+          vehiclesData = response;
+        } else if (response && response.data && typeof response.data === 'object') {
+          // If data is an object, try to find the vehicles array
+          vehiclesData = response.data.vehicles || response.data.data || response.data.items || [];
+        } else {
+          console.log('No valid vehicles data found in response');
+          setManagedVehicles([]);
+          return;
+        }
+        
+        console.log('Vehicles data to transform:', vehiclesData);
+        
+        if (vehiclesData && vehiclesData.length > 0) {
+          const transformedVehicles = vehiclesData.map(vehicle => ({
+            id: vehicle.id,
+            title: vehicle.title || `${vehicle.make?.name} ${vehicle.model?.name}`,
+            price: `PKR ${vehicle.price ? parseFloat(vehicle.price).toLocaleString() : 'N/A'}`,
+            year: vehicle.year?.toString() || 'N/A',
+            km: vehicle.mileage ? `${vehicle.mileage.toLocaleString()} km` : 'N/A',
+            city: vehicle.location || 'N/A',
+            fuel: vehicle.fuel_type || 'N/A',
+            image: vehicle.images && vehicle.images.length > 0 
+              ? { uri: `http://192.168.18.104:8000/${vehicle.images[0]}` }
+              : require('../assets/images/alto.webp'),
+            isNew: vehicle.condition === 'new',
+            isStarred: vehicle.is_featured || false,
+            imagesCount: vehicle.images ? vehicle.images.length : 0,
+            managed: true, // Mark as managed
+            inspected: null,
+            sellerEmail: vehicle.user?.email,
+            sellerName: vehicle.user?.name,
+            biddingEnabled: false,
+            biddingEndTime: null,
+            currentBid: null,
+            bids: [],
+            highestBidder: null,
+            isCertified: vehicle.is_certified || false,
+          }));
+          
+          console.log('Transformed Managed Vehicles:', transformedVehicles);
+          setManagedVehicles(transformedVehicles);
+        } else {
+          console.log('No managed vehicles data, using fallback');
+          setManagedVehicles([]);
+        }
+      } catch (error) {
+        console.error('Error loading managed vehicles:', error);
+        setManagedVehicles([]);
+      } finally {
+        setIsLoadingManaged(false);
+      }
+    };
+
+    loadManagedVehicles();
   }, []);
 
   // Get cars from global data manager with real-time updates
@@ -1074,6 +1305,22 @@ const Home = ({ navigation, route }) => {
       navigation.setParams({ newListing: undefined, showSuccessMessage: undefined });
     }
   }, [route.params?.newListing]);
+
+  // Handle sign-in success
+  React.useEffect(() => {
+    if (route.params?.fromSignIn) {
+      setShowSignInSuccess(true);
+      // Clear the params to prevent showing message again
+      navigation.setParams({ fromSignIn: undefined });
+      
+      // Auto-hide the message after 5 seconds
+      const timer = setTimeout(() => {
+        setShowSignInSuccess(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [route.params?.fromSignIn]);
 
   const handleSellOption = (option) => {
     setSellModalVisible(false);
@@ -1093,14 +1340,7 @@ const Home = ({ navigation, route }) => {
     }
   };
 
-  const handleSellButtonPress = () => {
-    if (!isUserLoggedIn()) {
-      setAuthModalVisible(true);
-      return;
-    }
-    
-    setSellModalVisible(true);
-  };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1164,6 +1404,22 @@ const Home = ({ navigation, route }) => {
               </View>
             )}
 
+            {/* Sign In Success Message */}
+            {showSignInSuccess && (
+              <View style={styles.successMessageContainer}>
+                <View style={styles.successMessage}>
+                  <Text style={styles.successIcon}>🎉</Text>
+                  <Text style={styles.successText}>Welcome back! You have successfully signed in.</Text>
+                  <TouchableOpacity 
+                    style={styles.successMessageClose}
+                    onPress={() => setShowSignInSuccess(false)}
+                  >
+                    <Text style={styles.successMessageCloseText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {/* Your Newly Posted Ad */}
             {newListing && (
               <View style={[styles.sectionWithCards, styles.sectionSpacing]}>
@@ -1213,13 +1469,21 @@ const Home = ({ navigation, route }) => {
               <Text style={[styles.sectionTitle, styles.sectionTitleMarginLeft]}>PakWheels offerings</Text>
               <View style={styles.offeringsGrid}>
                 {offerings.map((off, idx) => (
-                  <View key={off.title} style={styles.offeringCardGrid}>
+                  <TouchableOpacity 
+                    key={off.title} 
+                    style={styles.offeringCardGrid}
+                    onPress={() => {
+                      if (off.title === 'AFFILIATION & BADGES') {
+                        navigation.navigate('AffiliationScreen');
+                      }
+                    }}
+                  >
                     <View style={styles.offeringIconWrapper}>
                       <Text style={styles.offeringIcon}>{off.icon}</Text>
                     </View>
                     <Text style={styles.offeringSubtitle}>{off.subtitle}</Text>
                     <Text style={styles.offeringTitle}>{off.title}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>
@@ -1228,85 +1492,138 @@ const Home = ({ navigation, route }) => {
             <View style={[styles.sectionWithCards, styles.sectionSpacing]}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>PakWheels Certified Cars</Text>
-                <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('CertifiedCarsScreen')}><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
-                <View style={[styles.cardRow, { direction: 'ltr' }]}>
-                  <TouchableOpacity style={styles.carCard} onPress={() => navigation.navigate('CarDetailScreen', { carId: 'sonata2021' })}>
-                    <Image source={require('../assets/images/sonata.jpeg')} style={styles.carImage} resizeMode="contain" />
-                    <Text style={styles.carCardTitle}>Hyundai Sonata 2021</Text>
-                    <Text style={styles.carCardPrice}>PKR 80.0 lacs</Text>
-                    <Text style={styles.carCardCity}>Karachi</Text>
-                    <Text style={styles.carCardDetails}>2021 | 84,061 km | Petrol</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.carCard} onPress={() => navigation.navigate('CarDetailScreen', { carId: 'alto2023' })}>
-                    <Image source={require('../assets/images/alto.webp')} style={styles.carImage} resizeMode="contain" />
-                    <Text style={styles.carCardTitle}>Suzuki Alto 2023</Text>
-                    <Text style={styles.carCardPrice}>PKR 30.0 lacs</Text>
-                    <Text style={styles.carCardCity}>Karachi</Text>
-                    <Text style={styles.carCardDetails}>2023 | 41,387 km | Petrol</Text>
-                  </TouchableOpacity>
+              
+              {isLoadingCertified ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Loading certified vehicles...</Text>
                 </View>
-              </ScrollView>
+              ) : certifiedVehicles.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+                  <View style={[styles.cardRow, { direction: 'ltr' }]}>
+                    {certifiedVehicles.slice(0, 10).map((vehicle) => (
+                      <TouchableOpacity 
+                        key={vehicle.id} 
+                        style={styles.carCard}
+                        onPress={() => navigation.navigate('CarDetailScreen', { car: vehicle })}
+                      >
+                        <View style={styles.imageContainer}>
+                          <Image source={vehicle.image} style={styles.carImage} resizeMode="cover" />
+                          {vehicle.isCertified && (
+                            <View style={styles.certifiedBadge}>
+                              <Text style={styles.certifiedText}>CERTIFIED</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.carCardTitle}>{vehicle.title}</Text>
+                        <Text style={styles.carCardPrice}>{vehicle.price}</Text>
+                        <Text style={styles.carCardCity}>{vehicle.city}</Text>
+                        <Text style={styles.carCardDetails}>{vehicle.year} | {vehicle.km} | {vehicle.fuel}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No certified vehicles available</Text>
+                </View>
+              )}
             </View>
 
             {/* Managed by PakWheels Section */}
             <View style={[styles.sectionWithCards, styles.sectionSpacing]}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>Managed by PakWheels</Text>
-                <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('ManagedCarsScreen')}><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
-                <View style={[styles.cardRow, { direction: 'ltr' }]}>
-                  <TouchableOpacity style={styles.carCard}>
-                    <Image source={require('../assets/images/vitz.jpg')} style={styles.carImage} resizeMode="contain" />
-                    <Text style={styles.carCardTitle}>Toyota Vitz 2018</Text>
-                    <Text style={styles.carCardPrice}>PKR 45.0 lacs</Text>
-                    <Text style={styles.carCardCity}>Lahore</Text>
-                    <Text style={styles.carCardDetails}>2018 | 52,000 km | Petrol</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.carCard}>
-                    <Image source={require('../assets/images/civic.jpg')} style={styles.carImage} resizeMode="contain" />
-                    <Text style={styles.carCardTitle}>Honda Civic 2020</Text>
-                    <Text style={styles.carCardPrice}>PKR 70.0 lacs</Text>
-                    <Text style={styles.carCardCity}>Islamabad</Text>
-                    <Text style={styles.carCardDetails}>2020 | 30,000 km | Petrol</Text>
-                  </TouchableOpacity>
+              
+              {isLoadingManaged ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Loading managed vehicles...</Text>
                 </View>
-              </ScrollView>
+              ) : managedVehicles.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+                  <View style={[styles.cardRow, { direction: 'ltr' }]}>
+                    {managedVehicles.slice(0, 10).map((vehicle) => (
+                      <TouchableOpacity 
+                        key={vehicle.id} 
+                        style={styles.carCard}
+                        onPress={() => navigation.navigate('CarDetailScreen', { car: vehicle })}
+                      >
+                        <View style={styles.imageContainer}>
+                          <Image source={vehicle.image} style={styles.carImage} resizeMode="cover" />
+                          {vehicle.isCertified && (
+                            <View style={styles.certifiedBadge}>
+                              <Text style={styles.certifiedText}>CERTIFIED</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.carCardTitle}>{vehicle.title}</Text>
+                        <Text style={styles.carCardPrice}>{vehicle.price}</Text>
+                        <Text style={styles.carCardCity}>{vehicle.city}</Text>
+                        <Text style={styles.carCardDetails}>{vehicle.year} | {vehicle.km} | {vehicle.fuel}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No managed vehicles available</Text>
+                </View>
+              )}
             </View>
 
             {/* Featured Used Cars Section */}
             <View style={[styles.sectionWithCards, styles.sectionSpacing]}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>Featured Used Cars</Text>
-                <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('FeaturedCarsScreen')}><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
-                <View style={[styles.cardRow, { direction: 'ltr' }]}>
-                  <TouchableOpacity style={styles.carCard}>
-                    <Image source={require('../assets/images/stonic.jpg')} style={styles.carImage} resizeMode="contain" />
-                    <Text style={styles.carCardTitle}>KIA Stonic 2025</Text>
-                    <Text style={styles.carCardPrice}>PKR 61.5 lacs</Text>
-                    <Text style={styles.carCardCity}>Lahore</Text>
-                    <Text style={styles.carCardDetails}>2025 | 30 km | Petrol</Text>
-                    {/* Bidding Badge */}
-                    <View style={styles.biddingBadge}>
-                      <Text style={styles.biddingIcon}>🏷️</Text>
-                      <Text style={styles.biddingText}>Live Bidding</Text>
-                      <Text style={styles.biddingTimer}>2d 5h left</Text>
-                    </View>
-                    <Text style={styles.biddingCurrentBid}>Current: PKR 58.5 lacs</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.carCard}>
-                    <Image source={require('../assets/images/mg.webp')} style={styles.carImage} resizeMode="contain" />
-                    <Text style={styles.carCardTitle}>MG HS 2025</Text>
-                    <Text style={styles.carCardPrice}>PKR 97.8 lacs</Text>
-                    <Text style={styles.carCardCity}>Lahore</Text>
-                    <Text style={styles.carCardDetails}>2025 | 30 km | Hybrid</Text>
-                  </TouchableOpacity>
+              
+              {isLoadingFeatured ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Loading featured vehicles...</Text>
                 </View>
-              </ScrollView>
+              ) : featuredVehicles.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ direction: 'ltr' }}>
+                  <View style={[styles.cardRow, { direction: 'ltr' }]}>
+                    {featuredVehicles.map((vehicle) => (
+                      <TouchableOpacity 
+                        key={vehicle.id} 
+                        style={styles.carCard}
+                        onPress={() => navigation.navigate('CarDetailScreen', { car: vehicle })}
+                      >
+                        <Image source={vehicle.image} style={styles.carImage} resizeMode="cover" />
+                        <Text style={styles.carCardTitle}>{vehicle.title}</Text>
+                        <Text style={styles.carCardPrice}>{vehicle.price}</Text>
+                        <Text style={styles.carCardCity}>{vehicle.city}</Text>
+                        <Text style={styles.carCardDetails}>{vehicle.year} | {vehicle.km} | {vehicle.fuel}</Text>
+                        
+                        {/* Bidding Badge if enabled */}
+                        {vehicle.biddingEnabled && (
+                          <>
+                            <View style={styles.biddingBadge}>
+                              <Text style={styles.biddingIcon}>🏷️</Text>
+                              <Text style={styles.biddingText}>Live Bidding</Text>
+                              {vehicle.biddingEndTime > Date.now() && (
+                                <Text style={styles.biddingTimer}>
+                                  {Math.floor((vehicle.biddingEndTime - Date.now()) / (1000 * 60 * 60 * 24))}d {Math.floor(((vehicle.biddingEndTime - Date.now()) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))}h left
+                                </Text>
+                              )}
+                            </View>
+                            <Text style={styles.biddingCurrentBid}>Current: PKR {vehicle.currentBid?.toLocaleString() || '0'}</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No featured vehicles available</Text>
+                </View>
+              )}
             </View>
 
             {/* PakWheels Autostore Section */}
@@ -1411,15 +1728,7 @@ const Home = ({ navigation, route }) => {
           <AutostoreSection />
         ) : null}
 
-        {/* Bottom Navigation Bar */}
-        <BottomNavigation
-          activeTab="Home"
-          onHomePress={() => {}}
-          onAdsPress={() => navigation.navigate('AdsScreen')}
-          onChatPress={() => navigation.navigate('ChatScreen')}
-          onMorePress={() => navigation.navigate('ProfileScreen')}
-          onSellPress={handleSellButtonPress}
-        />
+
       </View>
       
               {/* Success Message */}
@@ -1435,37 +1744,7 @@ const Home = ({ navigation, route }) => {
           </View>
         )}
 
-              {/* Sell Modal */}
-      <SellModal
-        visible={sellModalVisible}
-        onClose={() => setSellModalVisible(false)}
-        onSelectOption={handleSellOption}
-        navigation={navigation}
-      />
-
-      {/* Auth Modal */}
-      <AuthModal
-        visible={authModalVisible}
-        onClose={() => setAuthModalVisible(false)}
-        onSignIn={() => {
-          setAuthModalVisible(false);
-          navigation.navigate('SignInScreen', {
-            returnScreen: 'Home',
-            returnParams: route.params,
-            action: 'sell'
-          });
-        }}
-        onSignUp={() => {
-          setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen', {
-            returnScreen: 'Home',
-            returnParams: route.params,
-            action: 'sell'
-          });
-        }}
-        action="sell"
-        navigation={navigation}
-      />
+        
     </SafeAreaView>
   );
 };
@@ -1513,13 +1792,7 @@ const styles = StyleSheet.create({
   offeringIcon: { fontSize: 32 },
   offeringSubtitle: { color: '#900C3F', fontWeight: '700', fontSize: 13, marginBottom: 2 },
   offeringTitle: { fontWeight: '700', fontSize: 16, color: '#222', textAlign: 'center' },
-  bottomNav: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 70, backgroundColor: '#fff', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eee', zIndex: 10, elevation: 10, direction: 'ltr' },
-  bottomNavItem: { alignItems: 'center', flex: 1 },
-  bottomNavIcon: { fontSize: 24, marginBottom: 2 },
-  bottomNavLabel: { fontSize: 12, color: '#888' },
-  bottomNavLabelActive: { fontSize: 12, color: '#900C3F', fontWeight: '700' },
-  sellNowButton: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#900C3F', alignItems: 'center', justifyContent: 'center', marginBottom: 30, zIndex: 20, elevation: 6, shadowColor: '#900C3F', shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
-  sellNowPlus: { color: '#fff', fontSize: 36, fontWeight: 'bold', marginTop: -2 },
+
   sectionTitleCenter: { textAlign: 'center' },
   sectionTitleMarginLeft: { marginLeft: 16 },
   offeringsGrid: {
@@ -1890,6 +2163,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  certifiedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  certifiedText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '700',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
 });
 

@@ -12,27 +12,32 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
-import SuccessModal from '../../modals/SuccessModal';
-import ErrorModal from '../../modals/ErrorModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+
 import { Header } from '../../components';
 import InlineError from '../../components/InlineError';
+import authService from '../../services/authService';
 
 const SignInScreen = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [successModalVisible, setSuccessModalVisible] = useState(false);
-  const [successAction, setSuccessAction] = useState('continue');
-  const [errorModalVisible, setErrorModalVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+
+
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [generalError, setGeneralError] = useState('');
 
   const handleSignIn = async () => {
+    console.log('SignIn: handleSignIn called');
+    
     // Clear previous errors
     setEmailError('');
     setPasswordError('');
+    setGeneralError('');
 
     // Validate fields
     let hasError = false;
@@ -51,36 +56,124 @@ const SignInScreen = ({ navigation, route }) => {
     }
 
     if (hasError) {
+      console.log('SignIn: Validation errors, returning');
       return;
     }
 
+    console.log('SignIn: Starting sign in process');
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Validate email format
+      if (!isValidEmail(email.trim())) {
+        setEmailError('Please enter a valid email address');
+        setIsLoading(false);
+        return;
+      }
+      // API call to login user using auth service
+      const loginData = {
+        email: email.trim(),
+        password: password
+      };
       
-      // For demo purposes, accept any valid email/password
-      if (email && password) {
-        // Store user session (in a real app, you'd store JWT token)
-        global.userSession = {
-          isLoggedIn: true,
-          user: {
-            id: Date.now(),
-            email: email,
-            name: email.split('@')[0], // Use email prefix as name
-            mobile: '03214554035', // Default for demo
-          }
-        };
+      console.log('SignIn: Making API call with data:', loginData);
+      const response = await authService.login(loginData);
+      console.log('SignIn: API response:', response);
+      
+      // Store user session with API response data
+      global.userSession = {
+        isLoggedIn: true,
+        user: {
+          id: response.user?.id || Date.now(),
+          email: response.user?.email || email,
+          name: response.user?.name || email.split('@')[0],
+          mobile: response.user?.phone || 'N/A',
+          token: response.token || response.access_token
+        }
+      };
+      
+      console.log('SignIn: User session created:', global.userSession);
+      
+      // Navigate back to the original screen or MainTabs if no return screen specified
+      const returnScreen = route.params?.returnScreen;
+      const returnParams = route.params?.returnParams;
+      
+      console.log('SignIn: Navigation params:', { returnScreen, returnParams });
+      console.log('SignIn: Action:', route.params?.action);
+      
+      if (returnScreen) {
+        // Check if the return screen is a nested screen within MainTabs
+        // Handle both tab names and component names
+        const mainTabsScreens = ['Home', 'Ads', 'Chat', 'Profile'];
+        const mainTabsComponents = ['Home', 'Ads', 'Chat', 'ProfileScreen'];
+        const isNestedScreen = mainTabsScreens.includes(returnScreen) || mainTabsComponents.includes(returnScreen);
         
-        // Show success modal instead of alert
-        const action = route.params?.action || 'continue';
-        setSuccessAction(action);
-        setSuccessModalVisible(true);
+        // Map component names to tab names for navigation
+        const screenNameMap = {
+          'ProfileScreen': 'Profile',
+          'Home': 'Home',
+          'Ads': 'Ads', 
+          'Chat': 'Chat'
+        };
+        const actualScreenName = screenNameMap[returnScreen] || returnScreen;
+        
+        console.log('SignIn: Return screen analysis:', {
+          returnScreen,
+          isNestedScreen,
+          mainTabsScreens,
+          mainTabsComponents,
+          actualScreenName,
+          returnParams
+        });
+        
+        console.log('SignIn: About to execute navigation logic...');
+        
+        if (isNestedScreen) {
+          // Replace to MainTabs with the specific tab
+          console.log('SignIn: Replacing to MainTabs with screen:', actualScreenName);
+          console.log('SignIn: Navigation call:', 'navigation.replace("MainTabs", { screen: "' + actualScreenName + '", fromSignIn: true })');
+          navigation.replace('MainTabs', {
+            screen: actualScreenName,
+            fromSignIn: true
+          });
+        } else if (returnParams) {
+          // Replace to the specified screen with params
+          console.log('SignIn: Replacing to', returnScreen, 'with params');
+          navigation.replace(returnScreen, returnParams);
+        } else {
+          // Replace to the specified screen
+          console.log('SignIn: Replacing to', returnScreen);
+          navigation.replace(returnScreen);
+        }
+      } else {
+        // Replace to MainTabs if no return screen specified
+        console.log('SignIn: Replacing to MainTabs (default)');
+        navigation.replace('MainTabs', {
+          screen: 'Home',
+          fromSignIn: true
+        });
       }
     } catch (error) {
-      setErrorMessage('Invalid email or password. Please try again.');
-      setErrorModalVisible(true);
+      console.log('SignIn: Error occurred:', error);
+      console.log('SignIn: Error response:', error.response);
+      
+      // Handle API errors
+      if (error.response && error.response.isBackendConfigError) {
+        console.log('SignIn: Setting backend config error inline');
+        setGeneralError(error.response.message);
+      } else if (error.response && error.response.error) {
+        // Handle server error messages (error field) - show inline
+        console.log('SignIn: Setting inline error:', error.response.error);
+        setGeneralError(error.response.error);
+      } else if (error.response && error.response.message) {
+        // Handle server error messages (message field) - show inline
+        console.log('SignIn: Setting inline error:', error.response.message);
+        setGeneralError(error.response.message);
+      } else {
+        // Handle general error message - show inline
+        console.log('SignIn: Setting inline error:', error.message);
+        setGeneralError(error.message || 'Invalid email or password. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -92,17 +185,15 @@ const SignInScreen = ({ navigation, route }) => {
   };
 
   const handleSocialLogin = (provider) => {
-    setErrorMessage(`${provider} login will be implemented soon!`);
-    setErrorModalVisible(true);
+    setGeneralError(`${provider} login will be implemented soon!`);
   };
 
   const handleForgotPassword = () => {
-    setErrorMessage('Password reset functionality will be implemented soon!');
-    setErrorModalVisible(true);
+    setGeneralError('Password reset functionality will be implemented soon!');
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView 
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -128,8 +219,16 @@ const SignInScreen = ({ navigation, route }) => {
             </View>
             <Text style={styles.welcomeTitle}>Welcome Back!</Text>
             <Text style={styles.welcomeSubtitle}>
-              Sign in to access your account and continue buying or selling cars
+              {route.params?.fromRegistration 
+                ? 'Your account has been created successfully! Please sign in to continue.'
+                : 'Sign in to access your account and continue buying or selling cars'
+              }
             </Text>
+            {route.params?.fromRegistration && (
+              <View style={styles.successMessage}>
+                <Text style={styles.successMessageText}>✅ Registration successful!</Text>
+              </View>
+            )}
           </View>
 
           {/* Sign In Form */}
@@ -147,6 +246,7 @@ const SignInScreen = ({ navigation, route }) => {
                   onChangeText={(text) => {
                     setEmail(text);
                     if (emailError) setEmailError('');
+                    if (generalError) setGeneralError('');
                   }}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -172,6 +272,7 @@ const SignInScreen = ({ navigation, route }) => {
                   onChangeText={(text) => {
                     setPassword(text);
                     if (passwordError) setPasswordError('');
+                    if (generalError) setGeneralError('');
                   }}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
@@ -190,6 +291,9 @@ const SignInScreen = ({ navigation, route }) => {
               </View>
               <InlineError visible={!!passwordError} message={passwordError} />
             </View>
+
+            {/* General Error */}
+            <InlineError visible={!!generalError} message={generalError} />
 
             {/* Forgot Password */}
             <TouchableOpacity 
@@ -259,41 +363,9 @@ const SignInScreen = ({ navigation, route }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Success Modal */}
-      <SuccessModal
-        visible={successModalVisible}
-        onClose={() => {
-          setSuccessModalVisible(false);
-          // Navigate back to the previous screen or Home if no return screen specified
-          const returnScreen = route.params?.returnScreen;
-          const returnParams = route.params?.returnParams;
-          
-          if (returnScreen) {
-            if (returnParams) {
-              // Use replace to remove SignIn screen from navigation stack
-              navigation.replace(returnScreen, returnParams);
-            } else {
-              // Use replace to remove SignIn screen from navigation stack
-              navigation.replace(returnScreen);
-            }
-          } else {
-            // Use replace to remove SignIn screen from navigation stack
-            navigation.replace('Home');
-          }
-        }}
-        title="Welcome Back!"
-        message="You have successfully signed in to your account."
-        action={successAction}
-      />
 
-      {/* Error Modal */}
-      <ErrorModal
-        visible={errorModalVisible}
-        onClose={() => setErrorModalVisible(false)}
-        title="Error"
-        message={errorMessage}
-        action="try_again"
-      />
+
+
     </SafeAreaView>
   );
 };
@@ -496,6 +568,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#900C3F',
+  },
+  successMessage: {
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  successMessageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

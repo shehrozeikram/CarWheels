@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, FlatList, SafeAreaView, TouchableOpacity, Platform, StatusBar, Linking, ScrollView, I18nManager } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { WebView } from 'react-native-webview';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const suzukiModels = [
   {
@@ -49,13 +50,14 @@ function renderStars(rating) {
 const BrandModelsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { brand } = route.params || { brand: 'Brand' };
 
   // For now, only Suzuki is implemented
   const models = brand === 'Suzuki' ? suzukiModels : [];
 
   return (
-          <SafeAreaView style={{ flex: 1, backgroundColor: '#900C3F', direction: 'ltr' }}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#900C3F', direction: 'ltr', paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Top blue bar for Android, SafeArea for iOS */}
               <View style={{ backgroundColor: '#900C3F', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0, direction: 'ltr' }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', height: Platform.OS === 'ios' ? 60 : 56, paddingHorizontal: 12, backgroundColor: '#900C3F', borderBottomLeftRadius: 18, borderBottomRightRadius: 18, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2, direction: 'ltr' }}>

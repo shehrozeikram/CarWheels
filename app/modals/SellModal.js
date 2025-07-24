@@ -81,11 +81,26 @@ const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
           setAuthModalVisible(false);
           // Get current screen name from navigation state
           const currentRoute = navigation.getState()?.routes[navigation.getState().index];
-          const currentScreen = currentRoute?.name || 'Home';
+          const currentScreen = currentRoute?.name || 'MainTabs';
+          
+          // Check if we're on a MainTabs screen (Home, Ads, Chat, Profile)
+          const mainTabsScreens = ['Home', 'Ads', 'Chat', 'Profile'];
+          const isOnMainTabs = mainTabsScreens.includes(currentScreen);
+          
+          // If we're on a MainTabs screen, return to that specific tab
+          const returnScreen = isOnMainTabs ? currentScreen : currentScreen;
+          const returnParams = currentRoute?.params;
+          
+          console.log('SellModal: Navigation params:', {
+            currentScreen,
+            isOnMainTabs,
+            returnScreen,
+            returnParams
+          });
           
           navigation.navigate('SignInScreen', {
-            returnScreen: currentScreen,
-            returnParams: currentRoute?.params,
+            returnScreen: returnScreen,
+            returnParams: returnParams,
             action: 'sell'
           });
         }}
@@ -93,11 +108,26 @@ const SellModal = ({ visible, onClose, onSelectOption, navigation }) => {
           setAuthModalVisible(false);
           // Get current screen name from navigation state
           const currentRoute = navigation.getState()?.routes[navigation.getState().index];
-          const currentScreen = currentRoute?.name || 'Home';
+          const currentScreen = currentRoute?.name || 'MainTabs';
+          
+          // Check if we're on a MainTabs screen (Home, Ads, Chat, Profile)
+          const mainTabsScreens = ['Home', 'Ads', 'Chat', 'Profile'];
+          const isOnMainTabs = mainTabsScreens.includes(currentScreen);
+          
+          // If we're on a MainTabs screen, return to that specific tab
+          const returnScreen = isOnMainTabs ? currentScreen : currentScreen;
+          const returnParams = currentRoute?.params;
+          
+          console.log('SellModal: Navigation params:', {
+            currentScreen,
+            isOnMainTabs,
+            returnScreen,
+            returnParams
+          });
           
           navigation.navigate('SignUpScreen', {
-            returnScreen: currentScreen,
-            returnParams: currentRoute?.params,
+            returnScreen: returnScreen,
+            returnParams: returnParams,
             action: 'sell'
           });
         }}

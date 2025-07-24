@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, ScrollView, TextInput, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import LocationModal from '../../../modals/LocationModal';
 import CarModelModal from '../../../modals/CarModelModal';
@@ -13,6 +14,7 @@ import { addCarToManager } from '../../../utils/CarDataManager';
 global.carListings = global.carListings || {};
 
 const SellYourCarScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [whatsappEnabled, setWhatsappEnabled] = useState(true);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState('');
@@ -113,7 +115,7 @@ const SellYourCarScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>

@@ -102,12 +102,27 @@ const AuthModal = ({ visible, onClose, onSignIn, onSignUp, action = 'sell', navi
                 if (navigation) {
                   // Get current screen name from navigation state
                   const currentRoute = navigation.getState()?.routes[navigation.getState().index];
-                  const currentScreen = currentRoute?.name || 'Home';
+                  const currentScreen = currentRoute?.name || 'MainTabs';
+                  
+                  // Check if we're on a MainTabs screen (Home, Ads, Chat, Profile)
+                  const mainTabsScreens = ['Home', 'Ads', 'Chat', 'Profile'];
+                  const isOnMainTabs = mainTabsScreens.includes(currentScreen);
+                  
+                  // If we're on a MainTabs screen, return to that specific tab
+                  const returnScreen = isOnMainTabs ? currentScreen : currentScreen;
+                  const returnParams = currentRoute?.params;
+                  
+                  console.log('AuthModal: Navigation params:', {
+                    currentScreen,
+                    isOnMainTabs,
+                    returnScreen,
+                    returnParams
+                  });
                   
                   navigation.navigate('SignInScreen', { 
                     action,
-                    returnScreen: currentScreen,
-                    returnParams: currentRoute?.params
+                    returnScreen: returnScreen,
+                    returnParams: returnParams
                   });
                 } else {
                   onSignIn();
@@ -126,12 +141,27 @@ const AuthModal = ({ visible, onClose, onSignIn, onSignUp, action = 'sell', navi
                 if (navigation) {
                   // Get current screen name from navigation state
                   const currentRoute = navigation.getState()?.routes[navigation.getState().index];
-                  const currentScreen = currentRoute?.name || 'Home';
+                  const currentScreen = currentRoute?.name || 'MainTabs';
+                  
+                  // Check if we're on a MainTabs screen (Home, Ads, Chat, Profile)
+                  const mainTabsScreens = ['Home', 'Ads', 'Chat', 'Profile'];
+                  const isOnMainTabs = mainTabsScreens.includes(currentScreen);
+                  
+                  // If we're on a MainTabs screen, return to that specific tab
+                  const returnScreen = isOnMainTabs ? currentScreen : currentScreen;
+                  const returnParams = currentRoute?.params;
+                  
+                  console.log('AuthModal: Navigation params:', {
+                    currentScreen,
+                    isOnMainTabs,
+                    returnScreen,
+                    returnParams
+                  });
                   
                   navigation.navigate('SignUpScreen', { 
                     action,
-                    returnScreen: currentScreen,
-                    returnParams: currentRoute?.params
+                    returnScreen: returnScreen,
+                    returnParams: returnParams
                   });
                 } else {
                   onSignUp();

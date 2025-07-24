@@ -54,7 +54,7 @@ const NotificationScreen = ({ navigation }) => {
                   <Text style={styles.notificationTitle}>New bid on your car</Text>
                   <Text style={styles.notificationDetail}>{item.car?.title || 'Car'}</Text>
                   <Text style={styles.notificationBid}>Bid: PKR {item.bidAmount?.toLocaleString() || ''} by {item.bidderName || 'Someone'}</Text>
-                  <Text style={styles.notificationTime}>{item.time ? new Date(item.time).toLocaleString() : ''}</Text>
+                <Text style={styles.notificationTime}>{item.time ? new Date(item.time).toLocaleString() : ''}</Text>
                 </View>
                 <View style={styles.notificationIndicator} />
               </TouchableOpacity>

@@ -224,7 +224,7 @@ const CarComparisonScreen = ({ navigation, route }) => {
 
         {/* Bottom Navigation Bar */}
         <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('Home')}>
+          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('MainTabs')}>
             <Text style={styles.bottomNavIcon}>🏠</Text>
             <Text style={styles.bottomNavLabel}>Home</Text>
           </TouchableOpacity>

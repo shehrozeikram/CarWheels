@@ -9,16 +9,20 @@ import {
   SafeAreaView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(100)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const tireMoveAnim = useRef(new Animated.Value(0)).current;
+  const rotationValueRef = useRef(0);
 
   useEffect(() => {
     // Start animations
@@ -47,15 +51,17 @@ const SplashScreen = ({ navigation }) => {
         }),
       ]).start();
 
-      // Realistic tire rotation like a car tire on the road
-      Animated.loop(
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 1500, // Realistic tire rotation speed (like driving at moderate speed)
-          useNativeDriver: true,
-        }),
-        { iterations: -1 } // Infinite iterations for constant rotation
-      ).start();
+      // Continuous rotation using different approach
+      const animateRotation = () => {
+        rotationValueRef.current += 8; // Very fast increment
+        tireMoveAnim.setValue(rotationValueRef.current);
+        
+        requestAnimationFrame(() => {
+          setTimeout(animateRotation, 2); // Very fast timeout
+        });
+      };
+      
+      setTimeout(animateRotation, 100);
 
       // Glow effect animation
       Animated.loop(
@@ -77,20 +83,38 @@ const SplashScreen = ({ navigation }) => {
     // Start animations after a short delay
     const timer = setTimeout(startAnimations, 200);
 
-    // Navigate to Home after 4.5 seconds
+    // Navigate to MainTabs after 4.5 seconds
     const navigationTimer = setTimeout(() => {
-      navigation.replace('Home');
+      navigation.replace('MainTabs', {
+        screen: 'Home'
+      });
     }, 4500);
 
     return () => {
       clearTimeout(timer);
       clearTimeout(navigationTimer);
     };
-  }, [navigation, fadeAnim, scaleAnim, rotateAnim, slideAnim, glowAnim, progressAnim]);
+  }, [navigation, fadeAnim, scaleAnim, rotateAnim, tireMoveAnim, slideAnim, glowAnim, progressAnim]);
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
+  });
+
+  // Continuous rotation interpolation
+  const tireRotation = tireMoveAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const tireBounce = tireMoveAnim.interpolate({
+    inputRange: [0, 50, 100],
+    outputRange: [0, -2, 0],
+  });
+
+  const tireScale = tireMoveAnim.interpolate({
+    inputRange: [0, 50, 100],
+    outputRange: [1, 1.01, 1],
   });
 
   const glowOpacity = glowAnim.interpolate({
@@ -99,7 +123,7 @@ const SplashScreen = ({ navigation }) => {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* Animated background */}
       <Animated.View style={[styles.background, { opacity: fadeAnim }]}>
         <View style={styles.backgroundGradient} />
@@ -119,12 +143,14 @@ const SplashScreen = ({ navigation }) => {
           },
         ]}
       >
-        {/* Rotating badge with glow effect */}
+        {/* Rotating tire - stays in place */}
         <Animated.View
           style={[
             styles.badgeContainer,
             {
-              transform: [{ rotate: rotateInterpolate }],
+              transform: [
+                { rotate: tireRotation },
+              ],
             },
           ]}
         >
@@ -224,11 +250,6 @@ const styles = StyleSheet.create({
   badge: {
     width: 120,
     height: 120,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
   },
   brandContainer: {
     alignItems: 'center',

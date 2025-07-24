@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform, I18nManager } from 'react-native';
-import SellModal from '../modals/SellModal';
-import AuthModal from '../modals/AuthModal';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Platform, I18nManager, Image } from 'react-native';
 import SuccessModal from '../modals/SuccessModal';
-import { isUserLoggedIn, getCurrentUser, clearUserSession, formatUserName } from './auth/AuthUtils';
+import { getCurrentUser, clearUserSession, formatUserName } from './auth/AuthUtils';
 import { addSampleNotifications } from '../utils/NotificationUtils';
+import { getUserAffiliation, getUserBadge, clearAllAffiliations } from '../utils/AffiliationManager';
 
 const Option = ({ icon, label, right, onPress }) => (
   <TouchableOpacity style={styles.optionRow} onPress={onPress} activeOpacity={0.7}>
@@ -21,13 +20,40 @@ const Option = ({ icon, label, right, onPress }) => (
 );
 
 const ProfileScreen = ({ navigation }) => {
-  const [sellModalVisible, setSellModalVisible] = useState(false);
-  const [authModalVisible, setAuthModalVisible] = useState(false);
+
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [notificationCount, setNotificationCount] = useState(global.notifications?.length || 0);
 
   const currentUser = getCurrentUser();
-  const isLoggedIn = isUserLoggedIn();
+  const isLoggedIn = !!currentUser;
+  
+  // Get affiliation information
+  const getCurrentUserAffiliation = () => {
+    if (!isLoggedIn || !currentUser) return null;
+    return getUserAffiliation(currentUser.email);
+  };
+  
+  const getCurrentUserBadge = () => {
+    if (!isLoggedIn || !currentUser) return null;
+    return getUserBadge(currentUser.email);
+  };
+  
+  const affiliation = getCurrentUserAffiliation();
+  const userBadge = getCurrentUserBadge();
+  
+  // Debug logging
+  console.log('ProfileScreen Debug:', {
+    isLoggedIn,
+    currentUser: currentUser?.email,
+    affiliation,
+    userBadge
+  });
+  
+  // Note: Affiliation is now purely manual - users must explicitly affiliate with organizations
+  // No automatic affiliation creation
+  
+  // Note: Users start with no affiliations by default
+  // Only show affiliations if they were explicitly created
 
   // Update notification count when screen comes into focus
   useEffect(() => {
@@ -50,21 +76,16 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleSignIn = () => {
-    navigation.navigate('SignInScreen');
+    navigation.navigate('SignInScreen', {
+      returnScreen: 'ProfileScreen'
+    });
   };
 
   const handleSignUp = () => {
     navigation.navigate('SignUpScreen');
   };
 
-  const handleSellButtonPress = () => {
-    if (!isUserLoggedIn()) {
-      setAuthModalVisible(true);
-      return;
-    }
-    
-    setSellModalVisible(true);
-  };
+
 
   return (
     <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
@@ -74,7 +95,20 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.headerGradient}>
           {isLoggedIn ? (
             <>
-              <Text style={styles.profileName}>{formatUserName(currentUser)}</Text>
+              <View style={styles.profileNameContainer}>
+                <Text style={styles.profileName}>{formatUserName(currentUser)}</Text>
+                {userBadge && (
+                  <Image 
+                    source={userBadge.type === 'organization' ? require('../assets/images/goldtick.png') : require('../assets/images/bluetick.png')}
+                    style={styles.badgeIcon}
+                  />
+                )}
+              </View>
+              {affiliation && (
+                <Text style={styles.affiliationText}>
+                  Affiliated with {affiliation.organizationName}
+                </Text>
+              )}
               <TouchableOpacity style={styles.viewProfileBtn}>
                 <Text style={styles.viewProfileText}>View Profile </Text>
               </TouchableOpacity>
@@ -111,11 +145,21 @@ const ProfileScreen = ({ navigation }) => {
           />
           <Option icon={'⚙️'} label="Theme" />
           <Option icon={'🗂️'} label="Choose Language" />
+          <Option icon={'🏢'} label="Affiliation & Badges" onPress={() => navigation.navigate('AffiliationScreen')} />
           {__DEV__ && (
             <Option icon={'🧪'} label="Add Test Notifications" onPress={() => {
               addSampleNotifications();
               // Force re-render to update notification count
               navigation.setParams({ refresh: Date.now() });
+            }} />
+          )}
+          {__DEV__ && (
+            <Option icon={'🧹'} label="Clear All Affiliations (Test)" onPress={() => {
+              clearAllAffiliations();
+              // Force re-render
+              setTimeout(() => {
+                navigation.setParams({ refresh: Date.now() });
+              }, 100);
             }} />
           )}
           <View style={styles.sectionDivider} />
@@ -148,61 +192,10 @@ const ProfileScreen = ({ navigation }) => {
           )}
         </ScrollView>
 
-        {/* Bottom Navigation Bar */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('Home')}>
-            <Text style={styles.bottomNavIcon}>🏠</Text>
-            <Text style={styles.bottomNavLabel}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('AdsScreen')}>
-            <Text style={styles.bottomNavIcon}>📢</Text>
-            <Text style={styles.bottomNavLabel}>My Ads</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sellNowButton} onPress={handleSellButtonPress}>
-            <Text style={styles.sellNowPlus}>+</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem} onPress={() => navigation.navigate('ChatScreen')}>
-            <Text style={styles.bottomNavIcon}>💬</Text>
-            <Text style={styles.bottomNavLabel}>Chat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomNavItem}>
-            <Text style={styles.bottomNavIcon}>☰</Text>
-            <Text style={styles.bottomNavLabelActive}>More</Text>
-          </TouchableOpacity>
-        </View>
+
       </View>
       
-      {/* Sell Modal */}
-      <SellModal
-        visible={sellModalVisible}
-        onClose={() => setSellModalVisible(false)}
-        onSelectOption={handleSellOption}
-        navigation={navigation}
-      />
 
-      {/* Auth Modal */}
-      <AuthModal
-        visible={authModalVisible}
-        onClose={() => setAuthModalVisible(false)}
-        onSignIn={() => {
-          setAuthModalVisible(false);
-          navigation.navigate('SignInScreen', {
-            returnScreen: 'ProfileScreen',
-            returnParams: route.params,
-            action: 'sell'
-          });
-        }}
-        onSignUp={() => {
-          setAuthModalVisible(false);
-          navigation.navigate('SignUpScreen', {
-            returnScreen: 'ProfileScreen',
-            returnParams: route.params,
-            action: 'sell'
-          });
-        }}
-        action="sell"
-        navigation={navigation}
-      />
 
       {/* Success Modal */}
       <SuccessModal
@@ -232,6 +225,23 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 4,
+  },
+  profileNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  badgeIcon: {
+    width: 24,
+    height: 24,
+    marginLeft: 8,
+  },
+  affiliationText: {
+    color: '#dbeafe',
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   viewProfileBtn: {
     marginTop: 2,
@@ -365,61 +375,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Bottom Navigation Styles
-  bottomNav: { 
-    position: 'absolute', 
-    left: 0, 
-    right: 0, 
-    bottom: 0, 
-    height: 70, 
-    backgroundColor: '#fff', 
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    alignItems: 'center', 
-    borderTopWidth: 1, 
-    borderTopColor: '#eee', 
-    zIndex: 10, 
-    elevation: 10,
-    direction: 'ltr'
-  },
-  bottomNavItem: { 
-    alignItems: 'center', 
-    flex: 1 
-  },
-  bottomNavIcon: { 
-    fontSize: 24, 
-    marginBottom: 2 
-  },
-  bottomNavLabel: { 
-    fontSize: 12, 
-    color: '#888' 
-  },
-  bottomNavLabelActive: { 
-    fontSize: 12, 
-    color: '#900C3F', 
-    fontWeight: '700' 
-  },
-  sellNowButton: { 
-    width: 62, 
-    height: 62, 
-    borderRadius: 31, 
-    backgroundColor: '#900C3F', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginBottom: 30, 
-    zIndex: 20, 
-    elevation: 6, 
-    shadowColor: '#900C3F', 
-    shadowOpacity: 0.18, 
-    shadowRadius: 8, 
-    shadowOffset: { width: 0, height: 2 } 
-  },
-  sellNowPlus: { 
-    color: '#fff', 
-    fontSize: 36, 
-    fontWeight: 'bold', 
-    marginTop: -2 
-  },
+
 });
 
 export default ProfileScreen; 

@@ -10,14 +10,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Platform, TextInput, I18nManager } from 'react-native';
 import SplashScreen from './app/screens/SplashScreen';
-import Home from './app/screens/Home';
+import MainTabNavigator from './app/navigation/MainTabNavigator';
 import SearchUsedCars from './app/screens/SearchUsedCars';
 import CarDetailScreen from './app/screens/CarDetailScreen';
 import CarListScreen from './app/screens/CarListScreen';
+import FeaturedCarsScreen from './app/screens/FeaturedCarsScreen';
+import CertifiedCarsScreen from './app/screens/CertifiedCarsScreen';
+import ManagedCarsScreen from './app/screens/ManagedCarsScreen';
 import BrandModelsScreen from './app/screens/BrandModelsScreen';
-import ProfileScreen from './app/screens/ProfileScreen';
-import AdsScreen from './app/screens/AdsScreen';
-import ChatScreen from './app/screens/ChatScreen';
 import CarComparisonScreen from './app/screens/CarComparisonScreen';
 import ChoosePlanScreen from './app/screens/selling/car/ChoosePlanScreen';
 import SellYourCarScreen from './app/screens/selling/car/SellYourCarScreen';
@@ -26,14 +26,21 @@ import AutoPartsChoosePlanScreen from './app/screens/selling/autoparts/ChoosePla
 import SignInScreen from './app/screens/auth/SignInScreen';
 import SignUpScreen from './app/screens/auth/SignUpScreen';
 import NotificationScreen from './app/screens/NotificationScreen';
+import AffiliationScreen from './app/screens/AffiliationScreen';
+import OrganizationRegistrationScreen from './app/screens/OrganizationRegistrationScreen';
+import EmployeeAffiliationScreen from './app/screens/EmployeeAffiliationScreen';
 import NotificationBanner from './app/components/NotificationBanner';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { clearAllAffiliations } from './app/utils/AffiliationManager';
 
 const Stack = createStackNavigator();
 
 // Initialize global state
 global.notifications = [];
 global.carListings = {};
+
+// Clear all affiliations on app startup to ensure clean state
+clearAllAffiliations();
 
 // Force LTR layout direction to prevent iOS RTL flipping
 if (Platform.OS === 'ios') {
@@ -96,14 +103,14 @@ export default function App() {
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="SplashScreen" component={SplashScreen} />
-          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
           <Stack.Screen name="SearchUsedCars" component={SearchUsedCars} />
           <Stack.Screen name="CarDetailScreen" component={CarDetailScreen} />
           <Stack.Screen name="CarListScreen" component={CarListScreen} />
+          <Stack.Screen name="FeaturedCarsScreen" component={FeaturedCarsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="CertifiedCarsScreen" component={CertifiedCarsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ManagedCarsScreen" component={ManagedCarsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BrandModelsScreen" component={BrandModelsScreen} />
-          <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="AdsScreen" component={AdsScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
           <Stack.Screen name="CarComparisonScreen" component={CarComparisonScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ChoosePlanScreen" component={ChoosePlanScreen} options={{ headerShown: false }} />
           <Stack.Screen name="SellYourCarScreen" component={SellYourCarScreen} options={{ headerShown: false }} />
@@ -112,6 +119,9 @@ export default function App() {
           <Stack.Screen name="SignInScreen" component={SignInScreen} options={{ headerShown: false }} />
           <Stack.Screen name="SignUpScreen" component={SignUpScreen} options={{ headerShown: false }} />
           <Stack.Screen name="NotificationScreen" component={NotificationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AffiliationScreen" component={AffiliationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="OrganizationRegistrationScreen" component={OrganizationRegistrationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="EmployeeAffiliationScreen" component={EmployeeAffiliationScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
         
         {/* Global Notification Banner */}

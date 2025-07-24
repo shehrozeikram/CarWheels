@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { addCarUpdateListener, addCarToManager } from '../utils/CarDataManager';
+import { getUserAffiliation, getUserBadge } from '../utils/AffiliationManager';
+import Badge from './Badge';
 
 const CarCard = ({ 
   id,
@@ -17,6 +19,8 @@ const CarCard = ({
   biddingEndTime,
   currentBid,
   bids,
+  sellerEmail,
+  sellerName,
   ...props 
 }) => {
   const [carData, setCarData] = useState({
@@ -64,8 +68,26 @@ const CarCard = ({
     bids: carBids,
   } = carData;
 
+  // Get seller information and badge
+  const sellerAffiliation = sellerEmail ? getUserAffiliation(sellerEmail) : null;
+  const sellerBadge = sellerEmail ? getUserBadge(sellerEmail) : null;
+  const displaySellerName = sellerName || sellerEmail || 'Unknown Seller';
+
   return (
     <TouchableOpacity style={styles.card} {...props}>
+      {/* Seller Information */}
+      {(sellerEmail || sellerName) && (
+        <View style={styles.sellerInfo}>
+          <Text style={styles.sellerName}>{displaySellerName}</Text>
+          {sellerBadge && (
+            <Badge 
+              type={sellerBadge.type === 'organization' ? 'organization' : 'affiliated'} 
+              size="small" 
+            />
+          )}
+        </View>
+      )}
+      
       <View style={styles.cardTopRow}>
         <View style={styles.cardImageWrapper}>
           <Image source={carImage} style={styles.cardImage} resizeMode="cover" />
@@ -137,6 +159,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 7,
     position: 'relative',
+  },
+  sellerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sellerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginRight: 8,
   },
   cardTopRow: { 
     flexDirection: 'row', 

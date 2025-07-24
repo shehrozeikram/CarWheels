@@ -13,11 +13,14 @@ import {
   Image,
   I18nManager,
 } from 'react-native';
-import SuccessModal from '../../modals/SuccessModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import ErrorModal from '../../modals/ErrorModal';
 import InlineError from '../../components/InlineError';
+import authService from '../../services/authService';
 
 const SignUpScreen = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
@@ -27,8 +30,7 @@ const SignUpScreen = ({ navigation, route }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [successModalVisible, setSuccessModalVisible] = useState(false);
-  const [successAction, setSuccessAction] = useState('continue');
+
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [fullNameError, setFullNameError] = useState('');
@@ -98,27 +100,110 @@ const SignUpScreen = ({ navigation, route }) => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // API call to register user using auth service
+      const userData = {
+        name: fullName.trim(),
+        email: email.trim(),
+        phone: mobile.trim(),
+        password: password,
+        password_confirmation: confirmPassword
+      };
+
+      const response = await authService.register(userData);
       
-      // For demo purposes, create account
-              global.userSession = {
-          isLoggedIn: true,
-          user: {
-            id: Date.now(),
-            name: fullName,
-            email: email,
-            mobile: mobile,
-          }
-        };
-        
-        // Show success modal instead of alert
-        const action = route.params?.action || 'continue';
-        setSuccessAction(action);
-        setSuccessModalVisible(true);
+      // Registration successful
+      global.userSession = {
+        isLoggedIn: true,
+        user: {
+          id: response.user?.id || Date.now(),
+          name: response.user?.name || fullName,
+          email: response.user?.email || email,
+          mobile: response.user?.phone || mobile,
+          token: response.token || response.access_token
+        }
+      };
+      
+      // Navigate directly to SignInScreen after successful registration
+      console.log('Registration successful, navigating to SignInScreen');
+      navigation.navigate('SignInScreen', {
+        returnScreen: route.params?.returnScreen,
+        returnParams: route.params?.returnParams,
+        action: route.params?.action,
+        fromRegistration: true
+      });
     } catch (error) {
-      setErrorMessage('Failed to create account. Please try again.');
-      setErrorModalVisible(true);
+      console.log('Registration error caught:', error);
+      console.log('Error response:', error.response);
+      
+      // Handle API errors
+      console.log('=== ERROR HANDLING DEBUG ===');
+      console.log('Error response structure:', error.response);
+      console.log('Error response errors:', error.response?.errors);
+      console.log('Error response message:', error.response?.message);
+      console.log('Has errors object:', !!error.response?.errors);
+      console.log('Errors object keys:', Object.keys(error.response?.errors || {}));
+      console.log('Errors object length:', Object.keys(error.response?.errors || {}).length);
+      
+      // Check if this is a validation error
+      const hasValidationErrors = error.response && 
+                                 error.response.errors && 
+                                 Object.keys(error.response.errors).length > 0;
+      
+      console.log('Has validation errors:', hasValidationErrors);
+      
+      if (hasValidationErrors) {
+        // Handle validation errors from API
+        const errors = error.response.errors;
+        console.log('Processing validation errors:', errors);
+        
+        // Clear any previous errors
+        setFullNameError('');
+        setEmailError('');
+        setMobileError('');
+        setPasswordError('');
+        setConfirmPasswordError('');
+        
+        if (errors.name && Array.isArray(errors.name)) {
+          setFullNameError(errors.name[0]);
+        }
+        if (errors.email && Array.isArray(errors.email)) {
+          console.log('Setting email error:', errors.email[0]);
+          setEmailError(errors.email[0]);
+        }
+        if (errors.phone && Array.isArray(errors.phone)) {
+          setMobileError(errors.phone[0]);
+        }
+        if (errors.password && Array.isArray(errors.password)) {
+          setPasswordError(errors.password[0]);
+        }
+        if (errors.password_confirmation && Array.isArray(errors.password_confirmation)) {
+          setConfirmPasswordError(errors.password_confirmation[0]);
+        }
+        
+        console.log('Validation errors processed - no modal should show');
+        setIsLoading(false);
+        return; // Exit early to prevent showing error modal
+      }
+      
+      // If we reach here, it's not a validation error
+      console.log('Not a validation error, showing error modal');
+      
+      // Check for backend configuration errors
+      if (error.response && error.response.isBackendConfigError) {
+        console.log('Showing backend config error modal');
+        setErrorMessage(error.response.message);
+        setErrorModalVisible(true);
+      } else if (error.response && error.response.message) {
+        // Handle server error messages
+        console.log('Showing server error modal:', error.response.message);
+        setErrorMessage(error.response.message);
+        setErrorModalVisible(true);
+      } else {
+        // Handle general error message
+        console.log('Showing general error modal:', error.message);
+        setErrorMessage(error.message || 'Failed to create account. Please try again.');
+        setErrorModalVisible(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -140,7 +225,7 @@ const SignUpScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { direction: 'ltr' }]}>
+    <SafeAreaView style={[styles.safeArea, { direction: 'ltr', paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView 
         style={[styles.container, { direction: 'ltr' }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -394,32 +479,7 @@ const SignUpScreen = ({ navigation, route }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Success Modal */}
-      <SuccessModal
-        visible={successModalVisible}
-        onClose={() => {
-          setSuccessModalVisible(false);
-          // Navigate back to the previous screen or Home if no return screen specified
-          const returnScreen = route.params?.returnScreen;
-          const returnParams = route.params?.returnParams;
-          
-          if (returnScreen) {
-            if (returnParams) {
-              // Use replace to remove SignUp screen from navigation stack
-              navigation.replace(returnScreen, returnParams);
-            } else {
-              // Use replace to remove SignUp screen from navigation stack
-              navigation.replace(returnScreen);
-            }
-          } else {
-            // Use replace to remove SignUp screen from navigation stack
-            navigation.replace('Home');
-          }
-        }}
-        title="Welcome to CarWheels!"
-        message="Your account has been created successfully. You can now access all features!"
-        action={successAction}
-      />
+
 
       {/* Error Modal */}
       <ErrorModal

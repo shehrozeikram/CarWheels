@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ChoosePlanScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const handleSellMyself = () => {
     // Navigate to sell it myself flow
     console.log('Sell It Myself selected');
@@ -20,7 +22,7 @@ const ChoosePlanScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
